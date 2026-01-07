@@ -1,0 +1,1078 @@
+<!-- templates/user_management.html -->
+{% extends "base.html" %}
+
+{% block title %}用户管理 - 智慧林草监测系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 用户管理特定样式 */
+    .badge-system-admin { background: linear-gradient(135deg, #F44336, #FF5252); }
+    .badge-data-admin { background: linear-gradient(135deg, #2196F3, #21CBF3); }
+    .badge-field-worker { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
+    .badge-public-user { background: linear-gradient(135deg, #FF9800, #FFB74D); }
+    .badge-supervisor { background: linear-gradient(135deg, #9C27B0, #E1BEE7); }
+    .badge-active { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
+    .badge-inactive { background: linear-gradient(135deg, #9E9E9E, #E0E0E0); }
+    
+    .search-box {
+        position: relative;
+    }
+    
+    .search-box .search-icon {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #666;
+    }
+    
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        margin-right: 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .role-badge {
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    .status-badge {
+        min-width: 60px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h3><i class="fas fa-users me-2"></i>用户管理</h3>
+            <p class="text-muted">管理系统用户账户、角色权限和个人信息</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="fas fa-plus me-2"></i>新增用户
+        </button>
+    </div>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="search-box">
+            <input type="text" class="form-control" placeholder="搜索用户名/邮箱" id="userSearch">
+            <i class="fas fa-search search-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" id="roleFilter">
+            <option value="">所有角色</option>
+            <option value="系统管理员">系统管理员</option>
+            <option value="数据管理员">数据管理员</option>
+            <option value="区域护林员">区域护林员</option>
+            <option value="公众用户">公众用户</option>
+            <option value="监管人员">监管人员</option>
+        </select>
+    </div>
+</div>
+
+
+<!-- 用户统计卡片 -->
+<div class="row mb-4" id="userStats">
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">总用户数</h5>
+                <h2 class="text-primary" id="totalUsers">0</h2>
+                <p class="text-muted">所有注册用户</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">系统管理员</h5>
+                <h2 class="text-danger" id="adminCount">0</h2>
+                <p class="text-muted">系统最高权限</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">数据管理员</h5>
+                <h2 class="text-info" id="dataAdminCount">0</h2>
+                <p class="text-muted">负责数据处理</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">护林员</h5>
+                <h2 class="text-success" id="workerCount">0</h2>
+                <p class="text-muted">负责区域管理</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户列表 -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>用户列表</h5>
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshUserList()">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportUserData()">
+                <i class="fas fa-download"></i> 导出
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>用户ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>性别</th>
+                        <th>角色</th>
+                        <th>负责区域</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>最后更新</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr id="loadingRow">
+                        <td colspan="9" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在加载用户数据...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center" id="pagination">
+                <!-- 分页将通过JS动态生成 -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 新增用户模态框 -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel"><i class="fas fa-user-plus me-2"></i>新增用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="addUsername" class="form-label">用户名 *</label>
+                            <input type="text" class="form-control" id="addUsername" required maxlength="20">
+                            <div class="form-text">最多20个字符，只能包含字母、数字和下划线</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="addPassword" class="form-label">密码 *</label>
+                            <input type="password" class="form-control" id="addPassword" required>
+                            <div class="form-text">至少6个字符，将自动加密存储</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="addEmail" class="form-label">邮箱</label>
+                            <input type="email" class="form-control" id="addEmail" maxlength="50">
+                            <div class="form-text">可选，格式：example@domain.com</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="addGender" class="form-label">性别</label>
+                            <select class="form-select" id="addGender">
+                                <option value="未知" selected>未知</option>
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="addRoleType" class="form-label">角色类型 *</label>
+                            <select class="form-select" id="addRoleType" required>
+                                <option value="">请选择角色</option>
+                                <option value="系统管理员">系统管理员</option>
+                                <option value="数据管理员">数据管理员</option>
+                                <option value="区域护林员">区域护林员</option>
+                                <option value="公众用户">公众用户</option>
+                                <option value="监管人员">监管人员</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="addAreaID" class="form-label">负责区域</label>
+                            <select class="form-select" id="addAreaID">
+                                <option value="">请选择负责区域（仅护林员需要）</option>
+                                <!-- 选项将通过JS动态加载 -->
+                            </select>
+                            <div class="form-text">只有当角色为"区域护林员"时才需要选择负责区域</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addUser()">创建用户</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户模态框 -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel"><i class="fas fa-user-edit me-2"></i>编辑用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editUsername" class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="editUsername" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editEmail" class="form-label">邮箱</label>
+                            <input type="email" class="form-control" id="editEmail" maxlength="50">
+                            <div class="form-text">可选，格式：example@domain.com</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editGender" class="form-label">性别</label>
+                            <select class="form-select" id="editGender">
+                                <option value="未知">未知</option>
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editRoleType" class="form-label">角色类型 *</label>
+                            <select class="form-select" id="editRoleType" required>
+                                <option value="系统管理员">系统管理员</option>
+                                <option value="数据管理员">数据管理员</option>
+                                <option value="区域护林员">区域护林员</option>
+                                <option value="公众用户">公众用户</option>
+                                <option value="监管人员">监管人员</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editIsActive" class="form-label">状态</label>
+                            <select class="form-select" id="editIsActive">
+                                <option value="true">已激活</option>
+                                <option value="false">未激活</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editAreaID" class="form-label">负责区域</label>
+                            <select class="form-select" id="editAreaID">
+                                <option value="">无负责区域</option>
+                                <!-- 选项将通过JS动态加载 -->
+                            </select>
+                            <div class="form-text">仅当角色为"区域护林员"时有效</div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <h6><i class="fas fa-key me-2"></i>修改密码（可选）</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="changePasswordCheck" onchange="togglePasswordFields()">
+                                <label class="form-check-label" for="changePasswordCheck">
+                                    修改密码
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="passwordFields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editOldPassword" class="form-label">旧密码</label>
+                                <input type="password" class="form-control" id="editOldPassword">
+                                <div class="form-text">修改自己的密码时需要填写</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editNewPassword" class="form-label">新密码</label>
+                                <input type="password" class="form-control" id="editNewPassword">
+                                <div class="form-text">至少6个字符</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editConfirmPassword" class="form-label">确认新密码</label>
+                                <input type="password" class="form-control" id="editConfirmPassword">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateUser()">保存修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看用户详情模态框 -->
+<div class="modal fade" id="viewUserModal" tabindex="-1" aria-labelledby="viewUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewUserModalLabel"><i class="fas fa-user me-2"></i>用户详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="viewUserModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="editFromViewBtn" style="display: none;" onclick="editFromView()">编辑用户</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 确认删除模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除用户 <span id="deleteUserName" class="fw-bold"></span> 吗？</p>
+                <p class="text-danger">此操作会将用户标记为未激活，无法登录系统。</p>
+                <input type="hidden" id="deleteUserId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // API基础URL - 用户管理专用
+    const USER_API_BASE = '/api/users';
+    let currentPage = 1;
+    let currentPageSize = 10;
+    let currentRole = '';
+    let currentStatus = '';
+    let currentKeyword = '';
+
+    // 获取用户列表
+    function loadUserList(page = 1, pageSize = 10) {
+        currentPage = page;
+        currentPageSize = pageSize;
+        
+        let url = `${USER_API_BASE}?page=${page}&page_size=${pageSize}`;
+        
+        if (currentKeyword) {
+            url = `${USER_API_BASE}/search?keyword=${encodeURIComponent(currentKeyword)}&page=${page}&page_size=${pageSize}`;
+            if (currentRole) {
+                url += `&role_type=${encodeURIComponent(currentRole)}`;
+            }
+        } else if (currentRole) {
+            url += `&role_type=${encodeURIComponent(currentRole)}`;
+        }
+        
+        $.ajax({
+            url: url,
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            success: function(response) {
+                if (response.code === 200) {
+                    renderUserTable(response.data);
+                    updatePagination(response.data);
+                } else {
+                    showError('加载用户列表失败: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                showError('加载用户列表失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+            }
+        });
+    }
+
+    // 渲染用户表格
+    function renderUserTable(data) {
+        const tbody = $('#userTableBody');
+        tbody.empty();
+        
+        if (!data.items || data.items.length === 0) {
+            tbody.html(`
+                <tr>
+                    <td colspan="9" class="text-center py-4">
+                        <i class="fas fa-user-slash fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">暂无用户数据</p>
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+        
+        data.items.forEach(user => {
+            // 确定角色徽章类
+            let roleBadgeClass = '';
+            switch(user.RoleType) {
+                case '系统管理员': roleBadgeClass = 'badge-system-admin'; break;
+                case '数据管理员': roleBadgeClass = 'badge-data-admin'; break;
+                case '区域护林员': roleBadgeClass = 'badge-field-worker'; break;
+                case '公众用户': roleBadgeClass = 'badge-public-user'; break;
+                case '监管人员': roleBadgeClass = 'badge-supervisor'; break;
+                default: roleBadgeClass = 'badge-secondary';
+            }
+            
+            // 确定状态徽章类
+            const statusBadgeClass = user.IsActive ? 'badge-active' : 'badge-inactive';
+            const statusText = user.IsActive ? '已激活' : '未激活';
+            
+            const row = `
+                <tr>
+                    <td>${user.UserID || '-'}</td>
+                    <td>${user.Username || '-'}</td>
+                    <td>${user.Email || '-'}</td>
+                    <td>${user.Gender || '未知'}</td>
+                    <td>
+                        <span class="badge ${roleBadgeClass} role-badge">
+                            ${user.RoleType}
+                        </span>
+                    </td>
+                    <td>${user.AreaName || user.AreaID || '-'}</td>
+                    <td>
+                        <span class="badge ${statusBadgeClass} status-badge">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td>${formatDateTime(user.CreatedTime) || '-'}</td>
+                    <td>${formatDateTime(user.UpdatedTime) || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info btn-action" onclick="viewUser('${user.UserID}')" title="查看详情">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary btn-action" onclick="editUser('${user.UserID}')" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger btn-action" onclick="deleteUser('${user.UserID}', '${user.Username}')" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
+    }
+
+    // 更新分页
+    function updatePagination(data) {
+        const pagination = $('#pagination');
+        pagination.empty();
+        
+        if (data.pages <= 1) return;
+        
+        // 上一页按钮
+        const prevDisabled = data.current_page <= 1 ? 'disabled' : '';
+        pagination.append(`
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link" href="#" onclick="changePage(${data.current_page - 1})" aria-label="上一页">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+        `);
+        
+        // 页码按钮
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, data.current_page - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(data.pages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === data.current_page ? 'active' : '';
+            pagination.append(`
+                <li class="page-item ${active}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `);
+        }
+        
+        // 下一页按钮
+        const nextDisabled = data.current_page >= data.pages ? 'disabled' : '';
+        pagination.append(`
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link" href="#" onclick="changePage(${data.current_page + 1})" aria-label="下一页">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        `);
+    }
+
+    // 切换页码
+    function changePage(page) {
+        loadUserList(page, currentPageSize);
+    }
+
+    // 刷新用户列表
+    function refreshUserList() {
+        loadUserList(1, currentPageSize);
+        loadUserStats();
+    }
+
+    // 加载用户统计
+    function loadUserStats() {
+        $.ajax({
+            url: `${USER_API_BASE}`,
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            data: { page_size: 1000 },
+            success: function(response) {
+                if (response.code === 200) {
+                    updateUserStats(response.data.items);
+                }
+            }
+        });
+    }
+
+    // 更新用户统计
+    function updateUserStats(users) {
+        const totalUsers = users.length;
+        const adminCount = users.filter(u => u.RoleType === '系统管理员').length;
+        const dataAdminCount = users.filter(u => u.RoleType === '数据管理员').length;
+        const workerCount = users.filter(u => u.RoleType === '区域护林员').length;
+        
+        $('#totalUsers').text(totalUsers);
+        $('#adminCount').text(adminCount);
+        $('#dataAdminCount').text(dataAdminCount);
+        $('#workerCount').text(workerCount);
+    }
+
+    // 新增用户
+    function addUser() {
+        const formData = {
+            Username: $('#addUsername').val().trim(),
+            Password: $('#addPassword').val(),
+            Email: $('#addEmail').val().trim() || null,
+            Gender: $('#addGender').val(),
+            RoleType: $('#addRoleType').val()
+        };
+        // 如果是护林员，添加区域ID
+        if (formData.RoleType === '区域护林员') {
+            const areaId = $('#addAreaID').val();
+            if (areaId) {
+                formData.AreaID = areaId;
+            }
+        }
+        
+        // 验证表单
+        if (!formData.Username || !formData.Password || !formData.RoleType) {
+            showError('请填写所有必填字段（用户名、密码、角色类型）');
+            return;
+        }
+        
+        // 验证用户名长度
+        if (formData.Username.length > 20) {
+            showError('用户名最多20个字符');
+            return;
+        }
+        
+        // 验证密码长度
+        if (formData.Password.length < 6) {
+            showError('密码至少6个字符');
+            return;
+        }
+        
+        $.ajax({
+            url: `${USER_API_BASE}`,
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.code === 200) {
+                    $('#addUserModal').modal('hide');
+                    $('#addUserForm')[0].reset();
+                    showSuccess('用户创建成功');
+                    refreshUserList();
+                } else {
+                    showError('创建用户失败: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                showError('创建用户失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+            }
+        });
+    }
+
+    // 切换密码字段显示
+    function togglePasswordFields() {
+        const checked = $('#changePasswordCheck').is(':checked');
+        $('#passwordFields').toggle(checked);
+        if (!checked) {
+            $('#editOldPassword').val('');
+            $('#editNewPassword').val('');
+            $('#editConfirmPassword').val('');
+        } else {
+            // 如果是修改自己的密码，显示旧密码输入框
+            const userId = $('#editUserId').val();
+            const currentUserId = localStorage.getItem('user_id');
+            if (userId === currentUserId) {
+                $('#editOldPassword').closest('.mb-3').show();
+            } else {
+                $('#editOldPassword').closest('.mb-3').hide();
+            }
+        }
+    }
+    
+    // 编辑用户
+    function editUser(userId) {
+        $.ajax({
+            url: `${USER_API_BASE}/${userId}`,
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            success: function(response) {
+                if (response.code === 200) {
+                    const user = response.data;
+                    $('#editUserId').val(user.UserID);
+                    $('#editUsername').val(user.Username);
+                    $('#editEmail').val(user.Email || '');
+                    $('#editGender').val(user.Gender || '未知');
+                    $('#editRoleType').val(user.RoleType);
+                    $('#editIsActive').val(user.IsActive.toString());
+                    
+                    // 设置区域ID
+                    if (user.AreaID) {
+                        $('#editAreaID').val(user.AreaID);
+                    } else {
+                        $('#editAreaID').val('');
+                    }
+                    
+                    // 根据角色显示/隐藏区域字段
+                    toggleEditAreaField();
+
+                    // 重置密码字段
+                    $('#changePasswordCheck').prop('checked', false);
+                    togglePasswordFields();
+                    
+                    $('#editUserModal').modal('show');
+                } else {
+                    showError('获取用户信息失败: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                showError('获取用户信息失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+            }
+        });
+    }
+
+    // 更新用户
+    function updateUser() {
+        const userId = $('#editUserId').val();
+        const formData = {
+            Email: $('#editEmail').val().trim() || null,
+            Gender: $('#editGender').val(),
+            RoleType: $('#editRoleType').val(),
+            IsActive: $('#editIsActive').val() === 'true'
+        };
+
+        // 如果是护林员，添加区域ID
+        if (formData.RoleType === '区域护林员') {
+            const areaId = $('#editAreaID').val();
+            formData.AreaID = areaId || null;
+        } else {
+            formData.AreaID = null;  // 非护林员清空区域ID
+        }
+        
+        // 如果勾选了修改密码
+        if ($('#changePasswordCheck').is(':checked')) {
+            const newPassword = $('#editNewPassword').val();
+            const confirmPassword = $('#editConfirmPassword').val();
+            const oldPassword = $('#editOldPassword').val();
+            
+            if (!newPassword) {
+                showError('请输入新密码');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                showError('密码长度至少6个字符');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showError('两次输入的密码不一致');
+                return;
+            }
+            
+            // 先修改密码
+            const passwordData = {
+                old_password: oldPassword,
+                new_password: newPassword
+            };
+            
+            $.ajax({
+                url: `${USER_API_BASE}/${userId}/password`,
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(passwordData),
+                success: function(response) {
+                    if (response.code !== 200) {
+                        showError('修改密码失败: ' + response.message);
+                        return;
+                    }
+                    // 密码修改成功后，继续更新其他信息
+                    updateUserInfo(userId, formData);
+                },
+                error: function(xhr) {
+                    showError('修改密码失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+                }
+            });
+        } else {
+            // 直接更新用户信息
+            updateUserInfo(userId, formData);
+        }
+    }
+    
+    // 更新用户信息（辅助函数）
+    function updateUserInfo(userId, formData) {
+        $.ajax({
+            url: `${USER_API_BASE}/${userId}`,
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.code === 200) {
+                    $('#editUserModal').modal('hide');
+                    showSuccess('用户信息更新成功');
+                    refreshUserList();
+                } else {
+                    showError('更新用户失败: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                showError('更新用户失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+            }
+        });
+    }
+    
+    // 查看用户详情
+    function viewUser(userId) {
+        $.ajax({
+            url: `${USER_API_BASE}/${userId}`,
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            success: function(response) {
+                if (response.code === 200) {
+                    const user = response.data;
+                    let roleBadgeClass = '';
+                    switch(user.RoleType) {
+                        case '系统管理员': roleBadgeClass = 'badge-system-admin'; break;
+                        case '数据管理员': roleBadgeClass = 'badge-data-admin'; break;
+                        case '区域护林员': roleBadgeClass = 'badge-field-worker'; break;
+                        case '公众用户': roleBadgeClass = 'badge-public-user'; break;
+                        case '监管人员': roleBadgeClass = 'badge-supervisor'; break;
+                        default: roleBadgeClass = 'badge-secondary';
+                    }
+                    
+                    const statusBadgeClass = user.IsActive ? 'badge-active' : 'badge-inactive';
+                    const statusText = user.IsActive ? '已激活' : '未激活';
+                    
+                    const html = `
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">用户编号</label>
+                                <p class="form-control-plaintext">${user.UserID || '-'}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">用户名</label>
+                                <p class="form-control-plaintext">${user.Username || '-'}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">邮箱</label>
+                                <p class="form-control-plaintext">${user.Email || '未设置'}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">性别</label>
+                                <p class="form-control-plaintext">${user.Gender || '未知'}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">角色类型</label>
+                                <p class="form-control-plaintext">
+                                    <span class="badge ${roleBadgeClass} role-badge">${user.RoleType}</span>
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">状态</label>
+                                <p class="form-control-plaintext">
+                                    <span class="badge ${statusBadgeClass} status-badge">${statusText}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">负责区域</label>
+                                <p class="form-control-plaintext">
+                                    ${user.AreaName || user.AreaID || '未分配'}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">创建时间</label>
+                                <p class="form-control-plaintext">${formatDateTime(user.CreatedTime) || '-'}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">最后更新</label>
+                                <p class="form-control-plaintext">${formatDateTime(user.UpdatedTime) || '-'}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $('#viewUserModalBody').html(html);
+                    $('#editFromViewBtn').data('user-id', userId).show();
+                    $('#viewUserModal').modal('show');
+                } else {
+                    showError('获取用户信息失败: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                showError('获取用户信息失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+            }
+        });
+    }
+    
+    // 从查看详情跳转到编辑
+    function editFromView() {
+        const userId = $('#editFromViewBtn').data('user-id');
+        $('#viewUserModal').modal('hide');
+        setTimeout(() => {
+            editUser(userId);
+        }, 300);
+    }
+
+
+    // 删除用户
+    function deleteUser(userId, username) {
+        $('#deleteUserId').val(userId);
+        $('#deleteUserName').text(username);
+        $('#deleteConfirmModal').modal('show');
+    }
+
+    // 确认删除
+    function confirmDelete() {
+        const userId = $('#deleteUserId').val();
+        
+        $.ajax({
+            url: `${USER_API_BASE}/${userId}`,
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            success: function(response) {
+                if (response.code === 200) {
+                    $('#deleteConfirmModal').modal('hide');
+                    showSuccess('用户删除成功');
+                    refreshUserList();
+                } else {
+                    showError('删除用户失败: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                showError('删除用户失败: ' + (xhr.responseJSON?.message || xhr.statusText));
+            }
+        });
+    }
+
+    // 加载区域列表
+    function loadAreaList() {
+        $.ajax({
+            url: '/api/environment/areas',  // 修改为正确的URL
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            success: function(response) {
+                console.log('区域API响应:', response);  // 添加调试日志
+                if (response.code === 200) {
+                    console.log('区域数据:', response.data);  // 查看数据结构
+                    updateAreaSelectOptions(response.data.items || response.data);
+                } else {
+                    console.error('区域API返回错误:', response.message);
+                }
+            },
+            error: function(xhr) {
+                console.error('加载区域列表失败:', xhr.responseJSON?.message || xhr.statusText);
+            }
+        });
+    }
+
+    // 更新区域选择框的选项
+    function updateAreaSelectOptions(areas) {
+        const addAreaSelect = $('#addAreaID');
+        const editAreaSelect = $('#editAreaID');
+        
+        // 清空现有选项（保留第一个选项）
+        addAreaSelect.find('option:not(:first)').remove();
+        editAreaSelect.find('option:not(:first)').remove();
+        
+        // 添加区域选项
+        areas.forEach(area => {
+            const option = `<option value="${area.AreaID}">${area.AreaName} (${area.AreaID})</option>`;
+            addAreaSelect.append(option);
+            editAreaSelect.append(option);
+        });
+    }
+
+    // 根据角色类型显示/隐藏区域选择
+    function toggleAreaField() {
+        const roleType = $('#addRoleType').val();
+        const areaField = $('#addAreaID').closest('.mb-3');
+        
+        if (roleType === '区域护林员') {
+            areaField.show();
+        } else {
+            areaField.hide();
+            $('#addAreaID').val('');
+        }
+    }
+
+    // 编辑页面的区域字段显示控制
+    function toggleEditAreaField() {
+        const roleType = $('#editRoleType').val();
+        const areaField = $('#editAreaID').closest('.mb-3');
+        
+        if (roleType === '区域护林员') {
+            areaField.show();
+        } else {
+            areaField.hide();
+            $('#editAreaID').val('');
+        }
+    }
+
+    // 导出用户数据
+    function exportUserData() {
+        showSuccess('导出功能开发中...');
+    }
+
+    // 显示成功消息
+    function showSuccess(message) {
+        alert('成功: ' + message);
+    }
+
+    // 显示错误消息
+    function showError(message) {
+        alert('错误: ' + message);
+    }
+
+    // 格式化时间
+    function formatDateTime(datetimeStr) {
+        if (!datetimeStr) return '-';
+        try {
+            const date = new Date(datetimeStr);
+            return date.toLocaleString('zh-CN');
+        } catch (e) {
+            return datetimeStr;
+        }
+    }
+
+    // 页面加载时初始化
+    $(document).ready(function() {
+        // 加载用户列表和统计
+        loadUserList();
+        loadUserStats();
+        loadAreaList();
+
+        // 角色类型改变时显示/隐藏区域字段
+        $('#addRoleType').on('change', toggleAreaField);
+        $('#editRoleType').on('change', toggleEditAreaField);
+            
+        // 搜索框事件 - 支持实时搜索
+        let searchTimeout;
+        $('#userSearch').on('keyup', function(e) {
+            clearTimeout(searchTimeout);
+            const keyword = $(this).val().trim();
+            currentKeyword = keyword;
+            
+            // 延迟搜索，避免频繁请求
+            searchTimeout = setTimeout(function() {
+                loadUserList(1, currentPageSize);
+            }, 500);
+        });
+        
+        // 角色筛选事件
+        $('#roleFilter').on('change', function() {
+            currentRole = $(this).val();
+            loadUserList(1, currentPageSize);
+        });
+        
+        // 重置新增用户表单
+        $('#addUserModal').on('hidden.bs.modal', function() {
+            $('#addUserForm')[0].reset();
+        });
+    });
+</script>
+{% endblock %}

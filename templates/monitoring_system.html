@@ -1,0 +1,1948 @@
+<!-- templates/monitoring_system.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环境监测系统 - 智慧林草</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --secondary-color: #4CAF50;
+            --light-green: #8BC34A;
+            --dark-green: #1B5E20;
+            --warning-color: #FF9800;
+            --danger-color: #F44336;
+            --info-color: #2196F3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--dark-green), var(--primary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar {
+            background: white;
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            padding-top: 20px;
+        }
+
+        .main-content {
+            padding: 20px;
+            min-height: calc(100vh - 56px);
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom: none;
+            font-weight: bold;
+            padding: 15px 20px;
+        }
+
+        .badge-forest { background: linear-gradient(135deg, #2E7D32, #4CAF50); }
+        .badge-grassland { background: linear-gradient(135deg, #8BC34A, #CDDC39); }
+        .badge-temperature { background: linear-gradient(135deg, #FF5252, #FF8A80); }
+        .badge-humidity { background: linear-gradient(135deg, #448AFF, #82B1FF); }
+        .badge-image { background: linear-gradient(135deg, #FF9800, #FFB74D); }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .stat-card.total { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .stat-card.forest { background: linear-gradient(135deg, #2E7D32, #4CAF50); }
+        .stat-card.grassland { background: linear-gradient(135deg, #8BC34A, #CDDC39); }
+        .stat-card.sensor { background: linear-gradient(135deg, #2196F3, #21CBF3); }
+
+        .table thead th {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(139, 195, 74, 0.05);
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            margin: 0 2px;
+            border-radius: 5px;
+        }
+
+        .modal-content {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            background: transparent;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding-right: 40px;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .real-time-badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/home">
+                <i class="fas fa-tree me-2"></i>
+                智慧林草监测系统
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span id="current-time" class="text-light me-3"></span>
+                <span class="badge bg-success me-3 real-time-badge">实时更新</span>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">
+                            <i class="fas fa-tachometer-alt"></i> 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-chart-bar"></i> 仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-lg-2 col-md-3 sidebar">
+                <ul class="nav flex-column">
+
+                    <li class="nav-item mb-2">
+                        <a class="nav-link active" href="#" onclick="showSection('dashboard')">
+                            <i class="fas fa-tachometer-alt me-2"></i>系统概览
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="#" onclick="showSection('areas')">
+                            <i class="fas fa-map-marked-alt me-2"></i>区域管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="#" onclick="showSection('sensors')">
+                            <i class="fas fa-microchip me-2"></i>传感器管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="#" onclick="showSection('monitors')">
+                            <i class="fas fa-chart-line me-2"></i>监测数据
+                        </a>
+                    </li>
+                </ul>
+
+                <hr class="my-4">
+
+                <div class="px-3">
+                    <li class="nav-item mb-2">
+                            <a class="nav-link active" href="/home">
+                                <i class="fas fa-home me-2"></i>系统首页
+                            </a>
+                        </li>
+                    <li class="nav-item mb-2">
+                            <a class="nav-link" href="/user-management">
+                                <i class="fas fa-users me-2"></i>用户管理
+                            </a>
+                        </li>
+                    <li class="nav-item mb-2">
+                            <a class="nav-link" href="/monitoring">
+                                <i class="fas fa-chart-line me-2"></i>环境监测
+                            </a>
+                        </li>
+                    <li class="nav-item mb-2">
+                            <a class="nav-link" href="/disaster-warning">
+                                <i class="fas fa-bell me-2"></i>灾害预警
+                            </a>
+                        </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/resource-management">
+                            <i class="fas fa-leaf me-2"></i>资源管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/device-management">
+                            <i class="fas fa-microchip me-2"></i>设备管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="statistical-analysis">
+                            <i class="fas fa-microchip me-2"></i>统计分析
+                        </a>
+                    </li>
+                </div>
+
+                <hr class="my-4">
+
+
+                <div class="px-3">
+                    <h6 class="text-muted mb-3">快捷操作</h6>
+                    <button class="btn btn-success btn-sm w-100 mb-2" onclick="showAddAreaModal()">
+                        <i class="fas fa-plus me-1"></i>新增区域
+                    </button>
+                    <button class="btn btn-info btn-sm w-100 mb-2" onclick="showAddSensorModal()">
+                        <i class="fas fa-plus me-1"></i>新增传感器
+                    </button>
+                    <button class="btn btn-warning btn-sm w-100" onclick="showAddMonitorModal()">
+                        <i class="fas fa-plus me-1"></i>新增监测数据
+                    </button>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="px-3">
+                    <h6 class="text-muted mb-3">系统状态</h6>
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="me-2">
+                            <i class="fas fa-database text-primary"></i>
+                        </div>
+                        <div>
+                            <small>数据库</small>
+                            <div><span id="db-status" class="badge bg-success">已连接</span></div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="me-2">
+                            <i class="fas fa-server text-info"></i>
+                        </div>
+                        <div>
+                            <small>数据更新</small>
+                            <div><span id="update-time" class="badge bg-info">刚刚</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-lg-10 col-md-9 main-content">
+                <!-- 系统概览 -->
+                <div id="dashboard-section" class="section-content">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h3><i class="fas fa-tachometer-alt me-2"></i>系统概览</h3>
+                            <p class="text-muted">实时监控林草环境数据</p>
+                        </div>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div class="row mb-4">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="stat-card total">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="fas fa-map fa-2x"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <h4 class="mb-0" id="total-areas">0</h4>
+                                        <small>监控区域</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="stat-card sensor">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="fas fa-microchip fa-2x"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <h4 class="mb-0" id="total-sensors">0</h4>
+                                        <small>传感器总数</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="stat-card forest">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="fas fa-tree fa-2x"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <h4 class="mb-0" id="forest-areas">0</h4>
+                                        <small>森林区域</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="stat-card grassland">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="fas fa-seedling fa-2x"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <h4 class="mb-0" id="grassland-areas">0</h4>
+                                        <small>草地区域</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图表 -->
+                    <div class="row mb-4">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-pie me-2"></i>传感器类型分布
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="sensorChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar me-2"></i>区域分布统计
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="areaChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 实时数据 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-clock me-2"></i>实时监测数据
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm btn-primary" onclick="loadRealTimeData()">
+                                            <i class="fas fa-sync-alt"></i> 刷新
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>传感器ID</th>
+                                                    <th>监测类型</th>
+                                                    <th>监测值</th>
+                                                    <th>采集时间</th>
+                                                    <th>状态</th>
+                                                    <th>所在区域</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="real-time-data">
+                                                <tr>
+                                                    <td colspan="6" class="text-center">正在加载数据...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 区域管理 -->
+                <div id="areas-section" class="section-content d-none">
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><i class="fas fa-map-marked-alt me-2"></i>区域管理</h3>
+                                <p class="text-muted">管理林草区域信息</p>
+                            </div>
+                            <button class="btn btn-success" onclick="showAddAreaModal()">
+                                <i class="fas fa-plus me-1"></i>新增区域
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>区域列表</div>
+                            <div class="d-flex">
+                                <div class="search-box me-2">
+                                    <input type="text" class="form-control form-control-sm" placeholder="搜索区域..."
+                                           id="area-search" onkeyup="searchAreas()">
+                                    <i class="fas fa-search search-icon"></i>
+                                </div>
+                                <select class="form-select form-select-sm me-2" style="width: 120px;"
+                                        id="area-type-filter" onchange="loadAreas()">
+                                    <option value="">所有类型</option>
+                                    <option value="森林">森林</option>
+                                    <option value="草地">草地</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadAreas()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="areas-list">
+                                <div class="loading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 传感器管理 -->
+                <div id="sensors-section" class="section-content d-none">
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><i class="fas fa-microchip me-2"></i>传感器管理</h3>
+                                <p class="text-muted">管理传感器设备信息</p>
+                            </div>
+                            <button class="btn btn-info" onclick="showAddSensorModal()">
+                                <i class="fas fa-plus me-1"></i>新增传感器
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>传感器列表</div>
+                            <div class="d-flex">
+                                <div class="search-box me-2">
+                                    <input type="text" class="form-control form-control-sm" placeholder="搜索传感器..."
+                                           id="sensor-search" onkeyup="searchSensors()">
+                                    <i class="fas fa-search search-icon"></i>
+                                </div>
+                                <select class="form-select form-select-sm me-2" style="width: 140px;"
+                                        id="sensor-type-filter" onchange="loadSensors()">
+                                    <option value="">所有类型</option>
+                                    <option value="温度">温度传感器</option>
+                                    <option value="湿度">湿度传感器</option>
+                                    <option value="图像">图像传感器</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadSensors()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="sensors-list">
+                                <div class="loading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 监测数据 -->
+                <div id="monitors-section" class="section-content d-none">
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><i class="fas fa-chart-line me-2"></i>监测数据</h3>
+                                <p class="text-muted">查看和管理监测数据</p>
+                            </div>
+                            <button class="btn btn-warning" onclick="showAddMonitorModal()">
+                                <i class="fas fa-plus me-1"></i>新增数据
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    监测数据查询
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label">选择传感器</label>
+                                            <select class="form-select" id="monitor-sensor-select">
+                                                <option value="">全部传感器</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">开始时间</label>
+                                            <input type="datetime-local" class="form-control" id="start-time">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">结束时间</label>
+                                            <input type="datetime-local" class="form-control" id="end-time">
+                                        </div>
+                                        <div class="col-12">
+                                            <button class="btn btn-primary" onclick="loadMonitorData()">
+                                                <i class="fas fa-search me-1"></i>查询数据
+                                            </button>
+                                            <button class="btn btn-outline-secondary" onclick="resetMonitorFilter()">
+                                                <i class="fas fa-redo me-1"></i>重置
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    批量操作
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-success w-100 mb-2" onclick="showBatchAddMonitorModal()">
+                                        <i class="fas fa-upload me-1"></i>批量导入数据
+                                    </button>
+                                    <button class="btn btn-outline-danger w-100" onclick="exportMonitorData()">
+                                        <i class="fas fa-download me-1"></i>导出数据
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>监测数据列表</div>
+                            <div class="d-flex">
+                                <select class="form-select form-select-sm me-2" style="width: 100px;"
+                                        id="page-size-select" onchange="loadMonitorData()">
+                                    <option value="10">10条/页</option>
+                                    <option value="20">20条/页</option>
+                                    <option value="50">50条/页</option>
+                                    <option value="100">100条/页</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadMonitorData()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="monitors-list">
+                                <div class="loading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加区域模态框 -->
+    <div class="modal fade" id="addAreaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加新区域</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addAreaForm">
+                        <div class="mb-3">
+                            <label class="form-label">区域编号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="area-id" required
+                                   pattern="AREA-(FOR|GRA)-\d{3}"
+                                   title="格式：AREA-FOR-001 或 AREA-GRA-001">
+                            <div class="form-text">格式：AREA-FOR-001（FOR=森林，GRA=草地）</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">区域名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="area-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">区域类型 <span class="text-danger">*</span></label>
+                            <select class="form-control" id="area-type" required>
+                                <option value="">请选择类型</option>
+                                <option value="森林">森林</option>
+                                <option value="草地">草地</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">地理位置 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="area-location" required
+                                   pattern="-?\d+\.\d+,-?\d+\.\d+"
+                                   title="格式：纬度,经度（例如：39.9042,116.4074）">
+                            <div class="form-text">格式：纬度,经度（例如：39.9042,116.4074）</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveArea()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加传感器模态框 -->
+    <div class="modal fade" id="addSensorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加新传感器</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addSensorForm">
+                        <div class="mb-3">
+                            <label class="form-label">传感器编号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="sensor-id" required
+                                   pattern="SENSOR-(TEMP|HUM|IMG)-\d{3}"
+                                   title="格式：SENSOR-TEMP-001, SENSOR-HUM-001 或 SENSOR-IMG-001">
+                            <div class="form-text">格式：SENSOR-TEMP-001（温度）, SENSOR-HUM-001（湿度）, SENSOR-IMG-001（图像）</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">所属区域 <span class="text-danger">*</span></label>
+                            <select class="form-control" id="sensor-area" required>
+                                <option value="">请选择区域</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">设备型号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="sensor-model" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">监测类型 <span class="text-danger">*</span></label>
+                            <select class="form-control" id="sensor-type" required>
+                                <option value="">请选择类型</option>
+                                <option value="温度">温度</option>
+                                <option value="湿度">湿度</option>
+                                <option value="图像">图像</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">安装时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="sensor-install-time" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">通信协议 <span class="text-danger">*</span></label>
+                            <select class="form-control" id="sensor-protocol" required>
+                                <option value="">请选择协议</option>
+                                <option value="MQTT">MQTT</option>
+                                <option value="HTTP">HTTP</option>
+                                <option value="CoAP">CoAP</option>
+                                <option value="LoRa">LoRa</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSensor()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加监测数据模态框 -->
+    <div class="modal fade" id="addMonitorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加监测数据</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addMonitorForm">
+                        <div class="mb-3">
+                            <label class="form-label">选择传感器 <span class="text-danger">*</span></label>
+                            <select class="form-control" id="monitor-sensor" required>
+                                <option value="">请选择传感器</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">监测值 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="monitor-value" required>
+                            <div class="form-text">温度示例：25.5°C，湿度示例：60%，图像示例：/static/images/sample.jpg</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">数据状态</label>
+                            <select class="form-control" id="monitor-status">
+                                <option value="有效" selected>有效</option>
+                                <option value="无效">无效</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">采集时间</label>
+                            <input type="datetime-local" class="form-control" id="monitor-time">
+                            <div class="form-text">留空则使用当前时间</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveMonitor()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量添加监测数据模态框 -->
+    <div class="modal fade" id="batchAddMonitorModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">批量导入监测数据</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        支持JSON格式批量导入，每条数据格式：{"SensorID": "SENSOR-TEMP-001", "MonitorValue": "25.5°C"}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">JSON数据</label>
+                        <textarea class="form-control" id="batch-monitor-data" rows="10" placeholder='[
+    {"SensorID": "SENSOR-TEMP-001", "MonitorValue": "25.5°C"},
+    {"SensorID": "SENSOR-HUM-001", "MonitorValue": "60%"}
+]'></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="batchSaveMonitor()">批量导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情查看模态框 -->
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailModalTitle">详情信息</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detailModalBody">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // 配置
+        const API_BASE = '/api/environment';
+        let currentAreaPage = 1;
+        let currentSensorPage = 1;
+        let currentMonitorPage = 1;
+        let areaChart = null;
+        let sensorChart = null;
+
+        // 页面加载
+        $(document).ready(function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+
+            loadStatistics();
+            loadRealTimeData();
+            loadAreas();
+            loadSensors();
+            loadMonitorSensors();
+            loadAreasForSelect();
+            loadSensorsForSelect();
+
+            // 设置默认时间
+            const now = new Date();
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            document.getElementById('start-time').value = formatDateTimeLocal(yesterday);
+            document.getElementById('end-time').value = formatDateTimeLocal(now);
+
+            // 每30秒刷新实时数据
+            setInterval(loadRealTimeData, 30000);
+        });
+
+        // 更新时间显示
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent =
+                now.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+        }
+
+        // 显示指定区域
+        function showSection(sectionId) {
+            $('.section-content').addClass('d-none');
+            $(`#${sectionId}-section`).removeClass('d-none');
+
+            // 更新侧边栏活跃状态
+            $('.sidebar .nav-link').removeClass('active');
+            $(`.sidebar .nav-link[onclick*="${sectionId}"]`).addClass('active');
+
+            // 刷新对应区域的数据
+            switch(sectionId) {
+                case 'dashboard':
+                    loadStatistics();
+                    loadRealTimeData();
+                    break;
+                case 'areas':
+                    loadAreas();
+                    break;
+                case 'sensors':
+                    loadSensors();
+                    break;
+                case 'monitors':
+                    loadMonitorData();
+                    break;
+            }
+        }
+
+        // ========== 系统概览 ==========
+        function loadStatistics() {
+            // 加载区域统计
+            $.get(`${API_BASE}/areas/statistics`, function(response) {
+                if (response.code === 200) {
+                    $('#total-areas').text(response.data.total_areas);
+                    $('#forest-areas').text(response.data.forest_areas);
+                    $('#grassland-areas').text(response.data.grassland_areas);
+
+                    // 更新区域分布图表
+                    updateAreaChart(response.data.forest_areas, response.data.grassland_areas);
+                }
+            });
+
+            // 加载传感器统计
+            $.get(`${API_BASE}/sensors/statistics`, function(response) {
+                if (response.code === 200) {
+                    $('#total-sensors').text(response.data.total_sensors);
+
+                    // 更新传感器分布图表
+                    updateSensorChart(
+                        response.data.temperature_sensors,
+                        response.data.humidity_sensors,
+                        response.data.image_sensors
+                    );
+                }
+            });
+
+            // 更新时间戳
+            $('#update-time').text(new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'}));
+        }
+
+        function updateSensorChart(temp, hum, img) {
+            if (sensorChart) {
+                sensorChart.destroy();
+            }
+
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            sensorChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['温度传感器', '湿度传感器', '图像传感器'],
+                    datasets: [{
+                        data: [temp, hum, img],
+                        backgroundColor: [
+                            'rgba(255, 82, 82, 0.8)',
+                            'rgba(68, 138, 255, 0.8)',
+                            'rgba(255, 152, 0, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: 'white'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw}个`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAreaChart(forest, grassland) {
+            if (areaChart) {
+                areaChart.destroy();
+            }
+
+            const ctx = document.getElementById('areaChart').getContext('2d');
+            areaChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['森林区域', '草地区域'],
+                    datasets: [{
+                        label: '数量',
+                        data: [forest, grassland],
+                        backgroundColor: [
+                            'rgba(46, 125, 50, 0.8)',
+                            'rgba(139, 195, 74, 0.8)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadRealTimeData() {
+            $('#real-time-data').html('<tr><td colspan="6" class="text-center">正在加载数据...</td></tr>');
+
+            // 获取所有传感器
+            $.get(`${API_BASE}/sensors?per_page=10`, function(response) {
+                if (response.code === 200 && response.data.items.length > 0) {
+                    let html = '';
+                    let loadedCount = 0;
+                    const sensors = response.data.items;
+
+                    sensors.forEach(sensor => {
+                        $.get(`${API_BASE}/sensors/${sensor.SensorID}/monitors/recent?limit=1`, function(monitorResponse) {
+                            if (monitorResponse.code === 200 && monitorResponse.data.length > 0) {
+                                const data = monitorResponse.data[0];
+                                const area = sensor.AreaID || '未知区域';
+
+                                let badgeClass = '';
+                                let icon = '';
+                                switch(sensor.MonitorType) {
+                                    case '温度':
+                                        badgeClass = 'badge-temperature';
+                                        icon = 'fas fa-thermometer-half';
+                                        break;
+                                    case '湿度':
+                                        badgeClass = 'badge-humidity';
+                                        icon = 'fas fa-tint';
+                                        break;
+                                    case '图像':
+                                        badgeClass = 'badge-image';
+                                        icon = 'fas fa-camera';
+                                        break;
+                                }
+
+                                html += `<tr>
+                                    <td><i class="${icon} me-2"></i><strong>${sensor.SensorID}</strong></td>
+                                    <td><span class="badge ${badgeClass}">${sensor.MonitorType}</span></td>
+                                    <td><code>${data.MonitorValue}</code></td>
+                                    <td>${formatDateTime(data.CollectTime)}</td>
+                                    <td><span class="badge ${data.DataStatus === '有效' ? 'bg-success' : 'bg-secondary'}">${data.DataStatus}</span></td>
+                                    <td>${area}</td>
+                                </tr>`;
+                            }
+
+                            loadedCount++;
+                            if (loadedCount === sensors.length) {
+                                if (html === '') {
+                                    html = '<tr><td colspan="6" class="text-center">暂无实时数据</td></tr>';
+                                }
+                                $('#real-time-data').html(html);
+                            }
+                        });
+                    });
+                } else {
+                    $('#real-time-data').html('<tr><td colspan="6" class="text-center">暂无传感器数据</td></tr>');
+                }
+            }).fail(function() {
+                $('#real-time-data').html('<tr><td colspan="6" class="text-center">加载失败</td></tr>');
+            });
+        }
+
+        // ========== 区域管理 ==========
+        function loadAreas(page = 1) {
+            currentAreaPage = page;
+            showLoading('#areas-list');
+
+            const search = $('#area-search').val();
+            const type = $('#area-type-filter').val();
+
+            let params = `page=${page}&per_page=10`;
+            if (type) params += `&area_type=${type}`;
+
+            $.get(`${API_BASE}/areas?${params}`, function(response) {
+                if (response.code === 200) {
+                    renderAreas(response.data);
+                } else {
+                    showError('#areas-list', response.message);
+                }
+            }).fail(function(xhr) {
+                showError('#areas-list', '加载区域列表失败: ' + xhr.statusText);
+            });
+        }
+
+        function renderAreas(data) {
+            if (!data.items || data.items.length === 0) {
+                $('#areas-list').html(`
+                    <div class="empty-state">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <p>暂无区域数据</p>
+                        <button class="btn btn-primary" onclick="showAddAreaModal()">
+                            <i class="fas fa-plus me-1"></i>添加第一个区域
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+                       '<th>区域编号</th><th>区域名称</th><th>类型</th><th>地理位置</th>' +
+                       '<th>创建时间</th><th>操作</th></tr></thead><tbody>'; // 移除了"传感器数"列
+
+            data.items.forEach(area => {
+                html += `<tr>
+                    <td><strong>${area.AreaID}</strong></td>
+                    <td>${area.AreaName}</td>
+                    <td><span class="badge ${area.AreaType === '森林' ? 'badge-forest' : 'badge-grassland'}">${area.AreaType}</span></td>
+                    <td><small>${area.Location}</small></td>
+                    <td>${formatDateTime(area.CreatedTime)}</td> <!-- 调整了列顺序 -->
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewAreaDetail('${area.AreaID}')" title="查看">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning btn-action" onclick="editArea('${area.AreaID}')" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteArea('${area.AreaID}')" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+
+            // 分页逻辑保持不变...
+            if (data.pages > 1) {
+                html += '<nav class="mt-3"><ul class="pagination justify-content-center">';
+
+                html += `<li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadAreas(${data.current_page - 1})">&laquo;</a>
+                </li>`;
+
+                for (let i = 1; i <= data.pages; i++) {
+                    if (i === 1 || i === data.pages || (i >= data.current_page - 2 && i <= data.current_page + 2)) {
+                        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="loadAreas(${i})">${i}</a>
+                        </li>`;
+                    } else if (i === data.current_page - 3 || i === data.current_page + 3) {
+                        html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    }
+                }
+
+                html += `<li class="page-item ${data.current_page === data.pages ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadAreas(${data.current_page + 1})">&raquo;</a>
+                </li>`;
+
+                html += '</ul></nav>';
+            }
+
+            $('#areas-list').html(html);
+        }
+
+        function searchAreas() {
+            const keyword = $('#area-search').val().toLowerCase();
+            $('table tbody tr').each(function() {
+                const text = $(this).text().toLowerCase();
+                $(this).toggle(text.includes(keyword));
+            });
+        }
+
+        function showAddAreaModal() {
+            $('#addAreaForm')[0].reset();
+            $('#area-id').prop('disabled', false);
+            $('#addAreaModal').modal('show');
+        }
+
+        function saveArea() {
+            const formData = {
+                AreaID: $('#area-id').val(),
+                AreaName: $('#area-name').val(),
+                AreaType: $('#area-type').val(),
+                Location: $('#area-location').val()
+            };
+
+            // 验证
+            if (!formData.AreaID || !formData.AreaName || !formData.AreaType || !formData.Location) {
+                alert('请填写所有必填项！');
+                return;
+            }
+
+            $.ajax({
+                url: `${API_BASE}/areas`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.code === 200) {
+                        $('#addAreaModal').modal('hide');
+                        showMessage('success', '区域添加成功！');
+                        loadAreas();
+                        loadStatistics();
+                        loadAreasForSelect();
+                    } else {
+                        alert('添加失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('添加失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function editArea(areaID) {
+            $.get(`${API_BASE}/areas/${areaID}`, function(response) {
+                if (response.code === 200) {
+                    const area = response.data;
+                    $('#area-id').val(area.AreaID).prop('disabled', true);
+                    $('#area-name').val(area.AreaName);
+                    $('#area-type').val(area.AreaType);
+                    $('#area-location').val(area.Location);
+
+                    // 修改模态框标题
+                    $('#addAreaModal .modal-title').text('编辑区域');
+                    $('#addAreaModal').modal('show');
+
+                    // 修改保存按钮行为
+                    $('#addAreaModal .btn-primary').off('click').on('click', function() {
+                        updateArea(areaID);
+                    });
+                }
+            });
+        }
+
+        function updateArea(areaID) {
+            const formData = {
+                AreaName: $('#area-name').val(),
+                AreaType: $('#area-type').val(),
+                Location: $('#area-location').val()
+            };
+
+            $.ajax({
+                url: `${API_BASE}/areas/${areaID}`,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.code === 200) {
+                        $('#addAreaModal').modal('hide');
+                        showMessage('success', '区域更新成功！');
+                        loadAreas();
+                        loadStatistics();
+                        loadAreasForSelect();
+
+                        // 恢复默认设置
+                        $('#addAreaModal .modal-title').text('添加新区域');
+                        $('#addAreaModal .btn-primary').off('click').on('click', saveArea);
+                    } else {
+                        alert('更新失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('更新失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function deleteArea(areaID) {
+            if (!confirm(`确定要删除区域 ${areaID} 吗？此操作将删除该区域下的所有传感器和监测数据！`)) {
+                return;
+            }
+
+            $.ajax({
+                url: `${API_BASE}/areas/${areaID}`,
+                type: 'DELETE',
+                success: function(response) {
+                    if (response.code === 200) {
+                        showMessage('success', '区域删除成功！');
+                        loadAreas();
+                        loadStatistics();
+                        loadAreasForSelect();
+                    } else {
+                        alert('删除失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('删除失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function viewAreaDetail(areaID) {
+            $.get(`${API_BASE}/areas/${areaID}`, function(response) {
+                if (response.code === 200) {
+                    const area = response.data;
+                    const sensors = area.sensors || [];
+
+                    let html = `
+                        <h6>区域信息</h6>
+                        <table class="table table-sm">
+                            <tr><th width="120">区域编号</th><td>${area.AreaID}</td></tr>
+                            <tr><th>区域名称</th><td>${area.AreaName}</td></tr>
+                            <tr><th>区域类型</th><td><span class="badge ${area.AreaType === '森林' ? 'badge-forest' : 'badge-grassland'}">${area.AreaType}</span></td></tr>
+                            <tr><th>地理位置</th><td>${area.Location}</td></tr>
+                            <tr><th>创建时间</th><td>${formatDateTime(area.CreatedTime)}</td></tr>
+                            <tr><th>更新时间</th><td>${formatDateTime(area.UpdatedTime)}</td></tr>
+                        </table>
+
+                        <h6 class="mt-4">传感器列表 (${sensors.length}个)</h6>
+                    `;
+
+                    if (sensors.length > 0) {
+                        html += '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>传感器ID</th><th>监测类型</th><th>设备型号</th></tr></thead><tbody>';
+
+                        sensors.forEach(sensor => {
+                            let badgeClass = '';
+                            switch(sensor.MonitorType) {
+                                case '温度': badgeClass = 'badge-temperature'; break;
+                                case '湿度': badgeClass = 'badge-humidity'; break;
+                                case '图像': badgeClass = 'badge-image'; break;
+                            }
+
+                            html += `<tr>
+                                <td>${sensor.SensorID}</td>
+                                <td><span class="badge ${badgeClass}">${sensor.MonitorType}</span></td>
+                                <td>${sensor.DeviceModel}</td>
+                            </tr>`;
+                        });
+
+                        html += '</tbody></table></div>';
+                    } else {
+                        html += '<p class="text-muted">该区域暂无传感器</p>';
+                    }
+
+                    $('#detailModalTitle').text('区域详情 - ' + area.AreaName);
+                    $('#detailModalBody').html(html);
+                    $('#detailModal').modal('show');
+                }
+            });
+        }
+
+        // ========== 传感器管理 ==========
+        function loadSensors(page = 1) {
+            currentSensorPage = page;
+            showLoading('#sensors-list');
+
+            const type = $('#sensor-type-filter').val();
+
+            let params = `page=${page}&per_page=10`;
+            if (type) params += `&monitor_type=${type}`;
+
+            $.get(`${API_BASE}/sensors?${params}`, function(response) {
+                if (response.code === 200) {
+                    renderSensors(response.data);
+                } else {
+                    showError('#sensors-list', response.message);
+                }
+            }).fail(function(xhr) {
+                showError('#sensors-list', '加载传感器列表失败: ' + xhr.statusText);
+            });
+        }
+
+        function renderSensors(data) {
+            if (!data.items || data.items.length === 0) {
+                $('#sensors-list').html(`
+                    <div class="empty-state">
+                        <i class="fas fa-microchip"></i>
+                        <p>暂无传感器数据</p>
+                        <button class="btn btn-primary" onclick="showAddSensorModal()">
+                            <i class="fas fa-plus me-1"></i>添加第一个传感器
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+                       '<th>传感器ID</th><th>监测类型</th><th>设备型号</th><th>所属区域</th>' +
+                       '<th>安装时间</th><th>通信协议</th><th>操作</th></tr></thead><tbody>';
+
+            data.items.forEach(sensor => {
+                let badgeClass = '';
+                let icon = '';
+                switch(sensor.MonitorType) {
+                    case '温度':
+                        badgeClass = 'badge-temperature';
+                        icon = 'fas fa-thermometer-half';
+                        break;
+                    case '湿度':
+                        badgeClass = 'badge-humidity';
+                        icon = 'fas fa-tint';
+                        break;
+                    case '图像':
+                        badgeClass = 'badge-image';
+                        icon = 'fas fa-camera';
+                        break;
+                }
+
+                html += `<tr>
+                    <td><i class="${icon} me-2"></i><strong>${sensor.SensorID}</strong></td>
+                    <td><span class="badge ${badgeClass}">${sensor.MonitorType}</span></td>
+                    <td>${sensor.DeviceModel}</td>
+                    <td>${sensor.AreaID}</td>
+                    <td>${formatDateTime(sensor.InstallTime)}</td>
+                    <td><span class="badge bg-secondary">${sensor.Protocol}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewSensorDetail('${sensor.SensorID}')" title="查看">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteSensor('${sensor.SensorID}')" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+
+            // 分页
+            if (data.pages > 1) {
+                html += '<nav class="mt-3"><ul class="pagination justify-content-center">';
+
+                html += `<li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadSensors(${data.current_page - 1})">&laquo;</a>
+                </li>`;
+
+                for (let i = 1; i <= data.pages; i++) {
+                    if (i === 1 || i === data.pages || (i >= data.current_page - 2 && i <= data.current_page + 2)) {
+                        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="loadSensors(${i})">${i}</a>
+                        </li>`;
+                    } else if (i === data.current_page - 3 || i === data.current_page + 3) {
+                        html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    }
+                }
+
+                html += `<li class="page-item ${data.current_page === data.pages ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadSensors(${data.current_page + 1})">&raquo;</a>
+                </li>`;
+
+                html += '</ul></nav>';
+            }
+
+            $('#sensors-list').html(html);
+        }
+
+        function searchSensors() {
+            const keyword = $('#sensor-search').val().toLowerCase();
+            $('table tbody tr').each(function() {
+                const text = $(this).text().toLowerCase();
+                $(this).toggle(text.includes(keyword));
+            });
+        }
+
+        function showAddSensorModal() {
+            $('#addSensorForm')[0].reset();
+            $('#sensor-install-time').val(formatDateTimeLocal(new Date()));
+            $('#addSensorModal').modal('show');
+        }
+
+        function saveSensor() {
+            const formData = {
+                SensorID: $('#sensor-id').val(),
+                AreaID: $('#sensor-area').val(),
+                DeviceModel: $('#sensor-model').val(),
+                MonitorType: $('#sensor-type').val(),
+                InstallTime: $('#sensor-install-time').val(),
+                Protocol: $('#sensor-protocol').val()
+            };
+
+            // 验证
+            if (!formData.SensorID || !formData.AreaID || !formData.DeviceModel ||
+                !formData.MonitorType || !formData.InstallTime || !formData.Protocol) {
+                alert('请填写所有必填项！');
+                return;
+            }
+
+            $.ajax({
+                url: `${API_BASE}/sensors`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.code === 200) {
+                        $('#addSensorModal').modal('hide');
+                        showMessage('success', '传感器添加成功！');
+                        loadSensors();
+                        loadStatistics();
+                        loadSensorsForSelect();
+                        loadMonitorSensors();
+                    } else {
+                        alert('添加失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('添加失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function deleteSensor(sensorID) {
+            if (!confirm(`确定要删除传感器 ${sensorID} 吗？此操作将删除该传感器的所有监测数据！`)) {
+                return;
+            }
+
+            $.ajax({
+                url: `${API_BASE}/sensors/${sensorID}`,
+                type: 'DELETE',
+                success: function(response) {
+                    if (response.code === 200) {
+                        showMessage('success', '传感器删除成功！');
+                        loadSensors();
+                        loadStatistics();
+                        loadSensorsForSelect();
+                        loadMonitorSensors();
+                    } else {
+                        alert('删除失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('删除失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function viewSensorDetail(sensorID) {
+            $.get(`${API_BASE}/sensors/${sensorID}`, function(response) {
+                if (response.code === 200) {
+                    const sensor = response.data;
+                    const area = sensor.area_info || {};
+                    const latestData = sensor.latest_data || {};
+
+                    let badgeClass = '';
+                    let icon = '';
+                    switch(sensor.MonitorType) {
+                        case '温度':
+                            badgeClass = 'badge-temperature';
+                            icon = 'fas fa-thermometer-half';
+                            break;
+                        case '湿度':
+                            badgeClass = 'badge-humidity';
+                            icon = 'fas fa-tint';
+                            break;
+                        case '图像':
+                            badgeClass = 'badge-image';
+                            icon = 'fas fa-camera';
+                            break;
+                    }
+
+                    let html = `
+                        <h6>传感器信息</h6>
+                        <table class="table table-sm">
+                            <tr><th width="120">传感器编号</th><td><i class="${icon} me-2"></i><strong>${sensor.SensorID}</strong></td></tr>
+                            <tr><th>监测类型</th><td><span class="badge ${badgeClass}">${sensor.MonitorType}</span></td></tr>
+                            <tr><th>设备型号</th><td>${sensor.DeviceModel}</td></tr>
+                            <tr><th>通信协议</th><td><span class="badge bg-secondary">${sensor.Protocol}</span></td></tr>
+                            <tr><th>安装时间</th><td>${formatDateTime(sensor.InstallTime)}</td></tr>
+                        </table>
+
+                        <h6 class="mt-4">部署信息</h6>
+                        <table class="table table-sm">
+                            <tr><th width="120">所属区域</th><td>${area.AreaName || '未知区域'} (${sensor.AreaID})</td></tr>
+                            <tr><th>区域类型</th><td><span class="badge ${area.AreaType === '森林' ? 'badge-forest' : 'badge-grassland'}">${area.AreaType || '未知'}</span></td></tr>
+                            <tr><th>地理位置</th><td>${area.Location || '未知'}</td></tr>
+                        </table>
+                    `;
+
+                    if (latestData.MonitorValue) {
+                        html += `
+                            <h6 class="mt-4">最新监测数据</h6>
+                            <table class="table table-sm">
+                                <tr><th width="120">监测值</th><td><code>${latestData.MonitorValue}</code></td></tr>
+                                <tr><th>采集时间</th><td>${formatDateTime(latestData.CollectTime)}</td></tr>
+                                <tr><th>数据状态</th><td><span class="badge ${latestData.DataStatus === '有效' ? 'bg-success' : 'bg-secondary'}">${latestData.DataStatus}</span></td></tr>
+                            </table>
+                        `;
+                    }
+
+                    html += `<div class="text-center mt-3">
+                        <button class="btn btn-primary" onclick="viewSensorMonitorData('${sensorID}')">
+                            <i class="fas fa-chart-line me-1"></i>查看历史数据
+                        </button>
+                    </div>`;
+
+                    $('#detailModalTitle').text('传感器详情 - ' + sensor.SensorID);
+                    $('#detailModalBody').html(html);
+                    $('#detailModal').modal('show');
+                }
+            });
+        }
+
+        function viewSensorMonitorData(sensorID) {
+            $('#detailModal').modal('hide');
+            showSection('monitors');
+            $('#monitor-sensor-select').val(sensorID);
+            loadMonitorData();
+        }
+
+        // ========== 监测数据管理 ==========
+        function loadMonitorSensors() {
+            $.get(`${API_BASE}/sensors?per_page=100`, function(response) {
+                if (response.code === 200) {
+                    const select = $('#monitor-sensor-select');
+                    const monitorSelect = $('#monitor-sensor');
+
+                    select.empty();
+                    monitorSelect.empty();
+
+                    select.append('<option value="">全部传感器</option>');
+                    monitorSelect.append('<option value="">请选择传感器</option>');
+
+                    response.data.items.forEach(sensor => {
+                        const option = `<option value="${sensor.SensorID}">${sensor.SensorID} (${sensor.MonitorType})</option>`;
+                        select.append(option);
+                        monitorSelect.append(option);
+                    });
+                }
+            });
+        }
+
+        function loadMonitorData(page = 1) {
+            currentMonitorPage = page;
+            showLoading('#monitors-list');
+
+            const sensorId = $('#monitor-sensor-select').val();
+            const startTime = $('#start-time').val();
+            const endTime = $('#end-time').val();
+            const pageSize = $('#page-size-select').val();
+
+            let params = `page=${page}&per_page=${pageSize}`;
+
+            if (sensorId) {
+                $.get(`${API_BASE}/sensors/${sensorId}/monitors?${params}`, function(response) {
+                    handleMonitorResponse(response);
+                }).fail(function(xhr) {
+                    showError('#monitors-list', '加载监测数据失败: ' + xhr.statusText);
+                });
+            } else {
+                // 如果没有选择具体传感器，获取所有传感器的数据
+                // 这里简化处理，只显示最新数据
+                $.get(`${API_BASE}/sensors?per_page=10`, function(sensorResponse) {
+                    if (sensorResponse.code === 200 && sensorResponse.data.items.length > 0) {
+                        // 获取第一个传感器的数据作为示例
+                        const firstSensor = sensorResponse.data.items[0];
+                        $.get(`${API_BASE}/sensors/${firstSensor.SensorID}/monitors?${params}`, function(monitorResponse) {
+                            handleMonitorResponse(monitorResponse);
+                        });
+                    } else {
+                        $('#monitors-list').html(`
+                            <div class="empty-state">
+                                <i class="fas fa-database"></i>
+                                <p>暂无监测数据</p>
+                                <button class="btn btn-primary" onclick="showAddMonitorModal()">
+                                    <i class="fas fa-plus me-1"></i>添加第一条监测数据
+                                </button>
+                            </div>
+                        `);
+                    }
+                });
+            }
+        }
+
+        function handleMonitorResponse(response) {
+            if (response.code === 200) {
+                renderMonitorData(response.data);
+            } else {
+                showError('#monitors-list', response.message);
+            }
+        }
+
+        function renderMonitorData(data) {
+            if (!data.items || data.items.length === 0) {
+                $('#monitors-list').html(`
+                    <div class="empty-state">
+                        <i class="fas fa-database"></i>
+                        <p>暂无监测数据</p>
+                        <button class="btn btn-primary" onclick="showAddMonitorModal()">
+                            <i class="fas fa-plus me-1"></i>添加第一条监测数据
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
+                       '<th>传感器ID</th><th>监测值</th><th>采集时间</th><th>数据状态</th><th>操作</th></tr></thead><tbody>';
+
+            data.items.forEach(monitor => {
+                html += `<tr>
+                    <td><strong>${monitor.SensorID}</strong></td>
+                    <td><code>${monitor.MonitorValue}</code></td>
+                    <td>${formatDateTime(monitor.CollectTime)}</td>
+                    <td><span class="badge ${monitor.DataStatus === '有效' ? 'bg-success' : 'bg-secondary'}">${monitor.DataStatus}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteMonitorData('${monitor.SensorID}', '${monitor.CollectTime}')" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+
+            // 分页
+            if (data.pages > 1) {
+                html += '<nav class="mt-3"><ul class="pagination justify-content-center">';
+
+                html += `<li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadMonitorData(${data.current_page - 1})">&laquo;</a>
+                </li>`;
+
+                for (let i = 1; i <= data.pages; i++) {
+                    if (i === 1 || i === data.pages || (i >= data.current_page - 2 && i <= data.current_page + 2)) {
+                        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="loadMonitorData(${i})">${i}</a>
+                        </li>`;
+                    } else if (i === data.current_page - 3 || i === data.current_page + 3) {
+                        html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    }
+                }
+
+                html += `<li class="page-item ${data.current_page === data.pages ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="loadMonitorData(${data.current_page + 1})">&raquo;</a>
+                </li>`;
+
+                html += '</ul></nav>';
+            }
+
+            $('#monitors-list').html(html);
+        }
+
+        function resetMonitorFilter() {
+            $('#monitor-sensor-select').val('');
+            const now = new Date();
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            $('#start-time').val(formatDateTimeLocal(yesterday));
+            $('#end-time').val(formatDateTimeLocal(now));
+            $('#page-size-select').val('10');
+            loadMonitorData();
+        }
+
+        function showAddMonitorModal() {
+            $('#addMonitorForm')[0].reset();
+            $('#addMonitorModal').modal('show');
+        }
+
+        function saveMonitor() {
+            const sensorId = $('#monitor-sensor').val();
+            const value = $('#monitor-value').val();
+            const status = $('#monitor-status').val();
+            const time = $('#monitor-time').val();
+
+            if (!sensorId || !value) {
+                alert('请填写传感器和监测值！');
+                return;
+            }
+
+            const formData = {
+                SensorID: sensorId,
+                MonitorValue: value,
+                DataStatus: status
+            };
+
+            if (time) {
+                formData.CollectTime = time;
+            }
+
+            $.ajax({
+                url: `${API_BASE}/monitors`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.code === 200) {
+                        $('#addMonitorModal').modal('hide');
+                        showMessage('success', '监测数据添加成功！');
+                        loadMonitorData();
+                        loadRealTimeData();
+                    } else {
+                        alert('添加失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('添加失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function showBatchAddMonitorModal() {
+            $('#batch-monitor-data').val('');
+            $('#batchAddMonitorModal').modal('show');
+        }
+
+        function batchSaveMonitor() {
+            const dataStr = $('#batch-monitor-data').val();
+
+            if (!dataStr.trim()) {
+                alert('请输入JSON数据！');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(dataStr);
+
+                if (!Array.isArray(data)) {
+                    alert('JSON数据必须是数组格式！');
+                    return;
+                }
+
+                // 验证每条数据
+                for (let i = 0; i < data.length; i++) {
+                    const item = data[i];
+                    if (!item.SensorID || !item.MonitorValue) {
+                        alert(`第${i + 1}条数据缺少SensorID或MonitorValue字段`);
+                        return;
+                    }
+                }
+
+                $.ajax({
+                    url: `${API_BASE}/monitors/batch`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        if (response.code === 200) {
+                            $('#batchAddMonitorModal').modal('hide');
+                            showMessage('success', `成功导入 ${response.data.length} 条监测数据！`);
+                            loadMonitorData();
+                            loadRealTimeData();
+                        } else {
+                            alert('导入失败: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('导入失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                    }
+                });
+
+            } catch (e) {
+                alert('JSON格式错误: ' + e.message);
+            }
+        }
+
+        function deleteMonitorData(sensorId, collectTime) {
+            if (!confirm('确定要删除这条监测数据吗？')) {
+                return;
+            }
+
+            const encodedTime = encodeURIComponent(collectTime);
+
+            $.ajax({
+                url: `${API_BASE}/monitors/${sensorId}/${encodedTime}`,
+                type: 'DELETE',
+                success: function(response) {
+                    if (response.code === 200) {
+                        showMessage('success', '监测数据删除成功！');
+                        loadMonitorData(currentMonitorPage);
+                        loadRealTimeData();
+                    } else {
+                        alert('删除失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('删除失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        function exportMonitorData() {
+            alert('数据导出功能正在开发中...');
+        }
+
+        // ========== 工具函数 ==========
+        function loadAreasForSelect() {
+            $.get(`${API_BASE}/areas?per_page=100`, function(response) {
+                if (response.code === 200) {
+                    const select = $('#sensor-area');
+                    select.empty();
+                    select.append('<option value="">请选择区域</option>');
+
+                    response.data.items.forEach(area => {
+                        select.append(`<option value="${area.AreaID}">${area.AreaName} (${area.AreaID})</option>`);
+                    });
+                }
+            });
+        }
+
+        function loadSensorsForSelect() {
+            $.get(`${API_BASE}/sensors?per_page=100`, function(response) {
+                if (response.code === 200) {
+                    const select = $('#monitor-sensor-select');
+                    select.empty();
+                    select.append('<option value="">请选择传感器</option>');
+
+                    response.data.items.forEach(sensor => {
+                        select.append(`<option value="${sensor.SensorID}">${sensor.SensorID} (${sensor.MonitorType})</option>`);
+                    });
+                }
+            });
+        }
+
+        function formatDateTime(datetimeStr) {
+            if (!datetimeStr) return '-';
+            const date = new Date(datetimeStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        function formatDateTimeLocal(date) {
+            const pad = n => n.toString().padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+
+        function showLoading(elementId) {
+            $(elementId).html('<div class="loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+        }
+
+        function showError(elementId, message) {
+            $(elementId).html(`<div class="alert alert-danger">${message}</div>`);
+        }
+
+        function showMessage(type, message) {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

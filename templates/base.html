@@ -1,0 +1,428 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}智慧林草监测系统{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --secondary-color: #4CAF50;
+            --light-green: #8BC34A;
+            --dark-green: #1B5E20;
+            --light-gray: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .navbar {
+            background-color: var(--dark-green) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .sidebar {
+            background-color: white;
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            top: 56px;
+            left: 0;
+            width: 250px;
+            padding-top: 1rem;
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            height: calc(100vh - 56px);
+            overflow-y: auto;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            min-height: calc(100vh - 56px);
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,.15);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 2px solid var(--primary-color);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--dark-green);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--dark-green);
+            border-color: var(--dark-green);
+        }
+
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .table thead th {
+            background-color: var(--light-green);
+            color: white;
+            border: none;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(139, 195, 74, 0.1);
+        }
+
+        .badge-forest {
+            background-color: #2E7D32;
+            color: white;
+        }
+
+        .badge-grassland {
+            background-color: #8BC34A;
+            color: white;
+        }
+
+        .badge-temperature {
+            background-color: #FF5252;
+            color: white;
+        }
+
+        .badge-humidity {
+            background-color: #448AFF;
+            color: white;
+        }
+
+        .badge-image {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .feature-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .feature-card .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px;
+        }
+
+        .feature-card .card-body {
+            padding: 20px;
+        }
+
+        .feature-card .card-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                top: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/home">
+                <i class="fas fa-tree me-2"></i>
+                智慧林草监测系统
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span id="current-time" class="text-light me-3"></span>
+                <span class="badge bg-success me-3 real-time-badge">实时更新</span>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">
+                            <i class="fas fa-tachometer-alt"></i> 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-chart-bar"></i> 仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 侧边栏和主内容区 -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item mb-2">
+                            <a class="nav-link active" href="/home">
+                                <i class="fas fa-home me-2"></i>系统首页
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/monitoring">
+                                <i class="fas fa-chart-line me-2"></i>环境监测
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/user-management">
+                                <i class="fas fa-users me-2"></i>用户管理
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/disaster-warning">
+                                <i class="fas fa-bell me-2"></i>灾害预警
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/resource-management">
+                                <i class="fas fa-leaf me-2"></i>资源管理
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/device-management">
+                                <i class="fas fa-microchip me-2"></i>设备管理
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="statistical-analysis">
+                                <i class="fas fa-microchip me-2"></i>统计分析
+                            </a>
+                        </li>
+                    </ul>
+
+                    <hr>
+
+                    <div class="px-3">
+                        <h6 class="text-muted mb-3">系统状态</h6>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-2">
+                                <i class="fas fa-database text-primary"></i>
+                            </div>
+                            <div>
+                                <small>数据库</small>
+                                <div><span id="db-status" class="badge bg-success">已连接</span></div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">
+                                <i class="fas fa-server text-info"></i>
+                            </div>
+                            <div>
+                                <small>数据更新</small>
+                                <div><span id="update-time" class="badge bg-info">刚刚</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4 main-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // API基础URL
+        const API_BASE = '/api/environment';
+        
+        // 检查登录状态
+        function checkLoginStatus() {
+            const token = localStorage.getItem('token');
+            const currentPath = window.location.pathname;
+            
+            // 如果是登录页面，不需要检查
+            if (currentPath === '/') {
+                return true;
+            }
+            
+            // 如果没有token且不在登录页面，跳转到登录页面
+            if (!token && currentPath !== '/') {
+                window.location.href = '/';
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+        
+        // 页面跳转函数
+        function navigateTo(page) {
+            switch(page) {
+                case 'areas':
+                    window.location.href = '/areas';
+                    break;
+                case 'monitoring':
+                    window.location.href = '/monitoring';
+                    break;
+                case 'users':
+                    window.location.href = '/user-management';
+                    break;
+                case 'home':
+                    window.location.href = '/home';
+                    break;
+                default:
+                    window.location.href = '/home';
+            }
+        }
+
+        // 显示加载状态
+        function showLoading(element) {
+            element.html('<div class="loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+        }
+
+        // 显示错误消息
+        function showError(message) {
+            alert('错误: ' + message);
+        }
+
+        // 格式化时间
+        function formatDateTime(datetimeStr) {
+            if (!datetimeStr) return '-';
+            const date = new Date(datetimeStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 更新时间显示
+        function updateCurrentTime() {
+            const now = new Date();
+            const formattedTime = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = formattedTime;
+        }
+
+        // 页面加载时检查登录状态
+        $(document).ready(function() {
+            if (!checkLoginStatus()) {
+                return;
+            }
+            
+            // 初始化时间显示
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

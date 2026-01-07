@@ -1,0 +1,474 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>首页 - 智慧林草环境监测系统</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --secondary-color: #4CAF50;
+            --light-green: #8BC34A;
+            --dark-green: #1B5E20;
+            --warning-color: #FF9800;
+            --danger-color: #F44336;
+            --info-color: #2196F3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 顶部导航栏，与系统其他页面保持一致 */
+        .navbar {
+            background-color: var(--dark-green) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .navbar-brand {
+            color: #fff;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar .user-info {
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar .user-info img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        /* 侧边导航，与 base.html 结构保持一致 */
+        .sidebar {
+            background-color: white;
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid #dee2e6;
+            position: fixed;
+            top: 56px;
+            left: 0;
+            width: 250px;
+            padding-top: 20px;
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            height: calc(100vh - 56px);
+            overflow-y: auto;
+        }
+
+        .sidebar .nav-link {
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 0 5px 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(46, 125, 50, 0.1);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            padding: 20px;
+            min-height: calc(100vh - 56px);
+            margin-left: 250px;
+        }
+
+        /* 功能卡片 */
+        .feature-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .feature-card .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px;
+        }
+
+        .feature-card .card-body {
+            padding: 20px;
+        }
+
+        .feature-card .card-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        /* 统计卡片 */
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 15px;
+            height: 100%;
+        }
+
+        .stat-card.user { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .stat-card.warning { background: linear-gradient(135deg, #FF5252, #FF8A80); }
+        .stat-card.resource { background: linear-gradient(135deg, #2E7D32, #4CAF50); }
+        .stat-card.device { background: linear-gradient(135deg, #2196F3, #21CBF3); }
+        .stat-card.analysis { background: linear-gradient(135deg, #FF9800, #FFB74D); }
+
+        .real-time-badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                top: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏，统一风格 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/home">
+                <i class="fas fa-tree me-2"></i>
+                智慧林草监测系统
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span id="current-time" class="text-light me-3"></span>
+                <span class="badge bg-success me-3 real-time-badge">实时更新</span>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">
+                            <i class="fas fa-tachometer-alt"></i> 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-chart-bar"></i> 仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边导航：结构与 base.html 保持一致，下方保留首页特有的系统状态区域 -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item mb-2">
+                            <a class="nav-link active" href="/home">
+                                <i class="fas fa-home me-2"></i>系统首页
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/monitoring">
+                                <i class="fas fa-chart-line me-2"></i>环境监测
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/user-management">
+                                <i class="fas fa-users me-2"></i>用户管理
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/disaster-warning">
+                                <i class="fas fa-bell me-2"></i>灾害预警
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/resource-management">
+                                <i class="fas fa-leaf me-2"></i>资源管理
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="/device-management">
+                                <i class="fas fa-microchip me-2"></i>设备管理
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link" href="statistical-analysis">
+                                <i class="fas fa-microchip me-2"></i>统计分析
+                            </a>
+                        </li>
+                    </ul>
+
+                    <hr class="my-4">
+
+                    <!-- 首页特有的系统状态区域 -->
+                    <div class="px-3">
+                        <h6 class="text-muted mb-3">系统状态</h6>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-2">
+                                <i class="fas fa-database text-primary"></i>
+                            </div>
+                            <div>
+                                <small>数据库</small>
+                                <div><span id="db-status" class="badge bg-success">已连接</span></div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">
+                                <i class="fas fa-server text-info"></i>
+                            </div>
+                            <div>
+                                <small>数据更新</small>
+                                <div><span id="update-time" class="badge bg-info">刚刚</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <div class="col-lg-10 col-md-9 main-content">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h3><i class="fas fa-home me-2"></i>系统首页</h3>
+                        <p class="text-muted">智慧林草环境监测系统总览</p>
+                    </div>
+                </div>
+
+                <!-- 统计卡片
+                <div class="row mb-4">
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="stat-card user">
+                            <i class="fas fa-users fa-2x mb-2"></i>
+                            <h4 class="mb-0" id="total-users">58</h4>
+                            <p class="mb-0">总用户数</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="stat-card warning">
+                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                            <h4 class="mb-0" id="total-warnings">3</h4>
+                            <p class="mb-0">预警数量</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="stat-card resource">
+                            <i class="fas fa-leaf fa-2x mb-2"></i>
+                            <h4 class="mb-0" id="total-resources">128</h4>
+                            <p class="mb-0">资源数量</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="stat-card device">
+                            <i class="fas fa-microchip fa-2x mb-2"></i>
+                            <h4 class="mb-0" id="total-devices">246</h4>
+                            <p class="mb-0">设备数量</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="stat-card analysis">
+                            <i class="fas fa-chart-pie fa-2x mb-2"></i>
+                            <h4 class="mb-0" id="total-analyses">15</h4>
+                            <p class="mb-0">分析报告</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="stat-card resource">
+                            <i class="fas fa-chart-line fa-2x mb-2"></i>
+                            <h4 class="mb-0" id="total-monitors">8924</h4>
+                            <p class="mb-0">监测数据</p>
+                        </div>
+                    </div>
+                </div> -->
+
+                <!-- 功能模块入口 -->
+                <div class="row">
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card feature-card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-users me-2"></i>用户管理</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="card-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <h5 class="card-title">用户账户管理</h5>
+                                <p class="card-text text-muted">管理系统用户、角色权限、账户信息等</p>
+                                <a href="/user-management" class="btn btn-success">进入管理 <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card feature-card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>灾害预警</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="card-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <h5 class="card-title">林草灾害预警</h5>
+                                <p class="card-text text-muted">实时监控灾害风险，发布预警信息，处理预警事件</p>
+                                <a href="disaster_warning.html" class="btn btn-warning">进入预警 <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card feature-card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-leaf me-2"></i>资源管理</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="card-icon">
+                                    <i class="fas fa-leaf"></i>
+                                </div>
+                                <h5 class="card-title">林草资源管理</h5>
+                                <p class="card-text text-muted">管理林地、草地资源信息，资源分布、资源状态等</p>
+                                <a href="resource_management.html" class="btn btn-success">进入管理 <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card feature-card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-microchip me-2"></i>设备管理</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="card-icon">
+                                    <i class="fas fa-microchip"></i>
+                                </div>
+                                <h5 class="card-title">监测设备管理</h5>
+                                <p class="card-text text-muted">管理传感器设备、设备状态、设备维护、设备配置等</p>
+                                <a href="device_management.html" class="btn btn-primary">进入管理 <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card feature-card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>统计分析</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="card-icon">
+                                    <i class="fas fa-chart-pie"></i>
+                                </div>
+                                <h5 class="card-title">数据统计分析</h5>
+                                <p class="card-text text-muted">多维度数据分析、报表生成、趋势分析、可视化展示</p>
+                                <a href="statistical_analysis.html" class="btn btn-info">进入分析 <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card feature-card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>监测数据</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="card-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <h5 class="card-title">环境监测数据</h5>
+                                <p class="card-text text-muted">查看实时监测数据、历史数据、数据导出、异常数据处理</p>
+                                <a href="/monitoring" class="btn btn-success">查看数据 <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 更新当前时间
+        function updateCurrentTime() {
+            const now = new Date();
+            const formattedTime = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = formattedTime;
+        }
+
+        // 初始化并定时更新时间
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+    </script>
+    <script>
+        // 导航到环境监测系统
+        function navigateToMonitoringSystem() {
+            window.location.href = 'monitoring_system.html';
+        }
+        
+        // 如果需要，可以在页面加载时检查API连接
+        $(document).ready(function() {
+            // 测试API连接
+            $.ajax({
+                url: '/api/environment/areas',
+                type: 'GET',
+                success: function(response) {
+                    console.log('环境监测API连接正常');
+                    $('#api-status').text('已连接').removeClass('bg-danger').addClass('bg-success');
+                },
+                error: function() {
+                    console.warn('环境监测API连接失败');
+                    $('#api-status').text('连接失败').removeClass('bg-success').addClass('bg-danger');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!-- templates/disaster_warning.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灾害预警 - 智慧林草环境监测系统</title>
+    <!-- 公共样式引入 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --secondary-color: #4CAF50;
+            --light-green: #8BC34A;
+            --dark-green: #1B5E20;
+            --warning-color: #FF9800;
+            --danger-color: #F44336;
+            --info-color: #2196F3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        /* 顶部导航 */
+        .navbar-top {
+            background: linear-gradient(135deg, var(--dark-green), var(--primary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            background: white;
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            padding-top: 20px;
+        }
+
+        .sidebar .nav-link {
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 0 5px 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(46, 125, 50, 0.1);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            padding: 20px;
+            min-height: calc(100vh - 56px);
+        }
+
+        /* 卡片样式 */
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom: none;
+            font-weight: bold;
+            padding: 15px 20px;
+        }
+
+        /* 预警徽章样式 */
+        .badge-level-1 { background: linear-gradient(135deg, #FF9800, #FFB74D); } /* 一般 */
+        .badge-level-2 { background: linear-gradient(135deg, #FF5722, #FF7043); } /* 较重 */
+        .badge-level-3 { background: linear-gradient(135deg, #F44336, #FF5252); } /* 严重 */
+        .badge-level-4 { background: linear-gradient(135deg, #B71C1C, #D32F2F); } /* 特别严重 */
+        .badge-status-new { background: linear-gradient(135deg, #2196F3, #42A5F5); } /* 新预警 */
+        .badge-status-processing { background: linear-gradient(135deg, #FF9800, #FFB74D); } /* 处理中 */
+        .badge-status-completed { background: linear-gradient(135deg, #4CAF50, #81C784); } /* 已处理 */
+
+        /* 预警卡片 */
+        .warning-card {
+            border-left: 4px solid;
+            transition: transform 0.2s;
+        }
+
+        .warning-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .warning-card.level-1 { border-left-color: #FF9800; }
+        .warning-card.level-2 { border-left-color: #FF5722; }
+        .warning-card.level-3 { border-left-color: #F44336; }
+        .warning-card.level-4 { border-left-color: #B71C1C; }
+
+        /* 表格样式 */
+        .table thead th {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(139, 195, 74, 0.05);
+        }
+
+        /* 实时预警闪烁动画 */
+        .real-time-warning {
+            animation: blink 1s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-tree me-2"></i>
+                智慧林草环境监测系统
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span id="current-time" class="text-light me-3"></span>
+                <span class="badge bg-danger me-3 real-time-warning">实时预警</span>
+                <div class="user-info text-light">
+                    <span>管理员</span>
+                    <a href="login.html" class="text-light ms-2"><i class="fas fa-sign-out-alt"></i></a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边导航 -->
+            <div class="col-lg-2 col-md-3 sidebar">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-home"></i> 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user_management.html">
+                            <i class="fas fa-users"></i> 用户管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="disaster_warning.html">
+                            <i class="fas fa-exclamation-triangle"></i> 灾害预警
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="resource_management.html">
+                            <i class="fas fa-leaf"></i> 资源管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="device_management.html">
+                            <i class="fas fa-microchip"></i> 设备管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="statistical_analysis.html">
+                            <i class="fas fa-chart-pie"></i> 统计分析
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="monitoring_system.html">
+                            <i class="fas fa-chart-line"></i> 监测数据
+                        </a>
+                    </li>
+                </ul>
+
+                <hr class="my-4">
+
+                <div class="px-3">
+                    <h6 class="text-muted mb-3">快捷操作</h6>
+                    <button class="btn btn-warning btn-sm w-100 mb-2" data-bs-toggle="modal" data-bs-target="#addWarningModal">
+                        <i class="fas fa-plus me-1"></i>手动预警
+                    </button>
+                    <button class="btn btn-info btn-sm w-100 mb-2" onclick="exportWarningData()">
+                        <i class="fas fa-download me-1"></i>导出预警
+                    </button>
+                    <button class="btn btn-success btn-sm w-100" onclick="refreshWarningData()">
+                        <i class="fas fa-sync me-1"></i>刷新数据
+                    </button>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-lg-10 col-md-9 main-content">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h3><i class="fas fa-exclamation-triangle me-2"></i>灾害预警管理</h3>
+                        <p class="text-muted">实时监控林草灾害风险，管理预警信息和处理流程</p>
+                    </div>
+                </div>
+
+                <!-- 预警统计 -->
+                <div class="row mb-4">
+                    <div class="col-xl-2 col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">总预警数</h6>
+                                <h2 class="text-danger">28</h2>
+                                <p class="text-muted">本月新增: 8</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">未处理</h6>
+                                <h2 class="text-warning">3</h2>
+                                <p class="text-muted">紧急: 1</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">处理中</h6>
+                                <h2 class="text-info">5</h2>
+                                <p class="text-muted">进行中</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">已处理</h6>
+                                <h2 class="text-success">20</h2>
+                                <p class="text-muted">完成率: 71.4%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-12 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">预警类型分布</h6>
+                                <div style="height: 150px;">
+                                    <canvas id="warningTypeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 实时预警提醒 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card warning-card level-3 real-time-warning">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="fas fa-fire fa-2x text-danger"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="card-title mb-1">紧急预警：林区火灾风险</h5>
+                                        <p class="card-text mb-1"><strong>区域：</strong>青龙山林区 - 温度异常升高至42℃，湿度低于20%</p>
+                                        <p class="card-text text-muted small"><strong>时间：</strong>2024-05-20 14:25 | <strong>等级：</strong>严重</p>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#warningDetailModal">
+                                            处理
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 预警列表 -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>预警列表</h5>
+                        <div class="d-flex">
+                            <select class="form-select form-select-sm me-2" style="width: auto;">
+                                <option value="">所有类型</option>
+                                <option value="fire">火灾</option>
+                                <option value="drought">干旱</option>
+                                <option value="flood">洪涝</option>
+                                <option value="pest">病虫害</option>
+                            </select>
+                            <select class="form-select form-select-sm me-2" style="width: auto;">
+                                <option value="">所有等级</option>
+                                <option value="1">一般</option>
+                                <option value="2">较重</option>
+                                <option value="3">严重</option>
+                                <option value="4">特别严重</option>
+                            </select>
+                            <select class="form-select form-select-sm" style="width: auto;">
+                                <option value="">所有状态</option>
+                                <option value="new">新预警</option>
+                                <option value="processing">处理中</option>
+                                <option value="completed">已处理</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>预警ID</th>
+                                        <th>预警类型</th>
+                                        <th>发生区域</th>
+                                        <th>预警等级</th>
+                                        <th>预警时间</th>
+                                        <th>状态</th>
+                                        <th>处理人</th>
+                                        <th>处理进度</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>W20240520001</td>
+                                        <td><i class="fas fa-fire text-danger me-1"></i>火灾风险</td>
+                                        <td>青龙山林区 - 东区</td>
+                                        <td><span class="badge badge-level-3 text-white">严重</span></td>
+                                        <td>2024-05-20 14:25</td>
+                                        <td><span class="badge badge-status-new text-white">新预警</span></td>
+                                        <td>未分配</td>
+                                        <td>0%</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#warningDetailModal"><i class="fas fa-eye"></i></button>
+                                            <button class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></button>
+                                            <button class="btn btn-sm btn-success"><i class="fas fa-check"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>W20240519002</td>
+                                        <td><i class="fas fa-bug text-warning me-1"></i>病虫害</td>
+                                        <td>白马草地 - 南区</td>
+                                        <td><span class="badge badge-level-2 text-white">较重</span></td>
+                                        <td>2024-05-19 09:15</td>
+                                        <td><span class="badge badge-status-processing text-white">处理中</span></td>
+                                        <td>张技术员</td>
+                                        <td>60%</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#warningDetailModal"><i class="fas fa-eye"></i></button>
+                                            <button class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></button>
+                                            <button class="btn btn-sm btn-success"><i class="fas fa-check"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>W20240518001</td>
+                                        <td><i class="fas fa-water text-info me-1"></i>洪涝风险</td>
+                                        <td>绿水林场 - 西区</td>
+                                        <td><span class="badge badge-level-1 text-white">一般</span></td>
+                                        <td>2024-05-18 16:40</td>
+                                        <td><span class="badge badge-status-completed text-white">已处理</span></td>
+                                        <td>李工程师</td>
+                                        <td>100%</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#warningDetailModal"><i class="fas fa-eye"></i></button>
+                                            <button class="btn btn-sm btn-secondary" disabled><i class="fas fa-edit"></i></button>
+                                            <button class="btn btn-sm btn-secondary" disabled><i class="fas fa-check"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 分页 -->
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" tabindex="-1">上一页</a>
+                                </li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#">
