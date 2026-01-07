@@ -18,8 +18,8 @@ class Config:
     DB_HOST = os.getenv('DB_HOST', 'localhost')
     DB_PORT = os.getenv('DB_PORT', '3306')
     DB_USER = os.getenv('DB_USER', 'root')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-    DB_NAME = os.getenv('DB_NAME', 'smart_forest_grass')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', '123456')
+    DB_NAME = os.getenv('DB_NAME', 'smart_forest_grass_db')
 
     # 对密码进行URL编码（处理特殊字符）
     if DB_PASSWORD:

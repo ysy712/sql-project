@@ -8,6 +8,12 @@ import random
 import os
 import bcrypt
 from sqlalchemy import text  # 导入 text
+# 确保所有模型都被导入，防止表未创建
+from models.resource_model import Resource, ResourceChangeLog
+from models.sensor_model import Area, Sensor, Monitor
+# 可根据需要导入其他模型
+
+
 
 def create_app():
     """创建Flask应用"""
@@ -16,7 +22,6 @@ def create_app():
     config.init_app(app)
 
     db.init_app(app)
-
     return app
 
 def hash_password(password):
@@ -176,21 +181,19 @@ def insert_test_data():
         print(f"✓ 添加了 {len(sensors)} 个传感器")
 
         # 添加测试监测数据
+
         print("添加监测数据...")
         monitor_data = []
         base_time = datetime.now() - timedelta(hours=24)
-
         for sensor in sensors:
             for i in range(20):  # 每个传感器添加20条测试数据
                 collect_time = base_time + timedelta(hours=i)
-
                 if sensor.MonitorType == '温度':
                     value = f"{round(random.uniform(15, 35), 1)}°C"
                 elif sensor.MonitorType == '湿度':
                     value = f"{random.randint(40, 90)}%"
                 else:
                     value = f"/static/images/sample_{random.randint(1, 5)}.jpg"
-
                 monitor = Monitor(
                     CollectTime=collect_time,
                     SensorID=sensor.SensorID,
@@ -198,10 +201,87 @@ def insert_test_data():
                     DataStatus='有效' if random.random() > 0.1 else '无效'
                 )
                 monitor_data.append(monitor)
-
         db.session.add_all(monitor_data)
         db.session.commit()
         print(f"✓ 添加了 {len(monitor_data)} 条监测数据")
+
+        # 资源管理业务测试数据
+        print("添加资源管理测试数据...")
+        from models.resource_model import Resource, ResourceChangeLog
+        # 自动生成20条资源信息
+        species_tree = ['白桦', '松树', '杨树', '枫树', '杉木', '柳树', '橡树', '槐树', '柏树', '桦树']
+        species_grass = ['羊草', '苜蓿', '黑麦草', '狗牙根', '早熟禾', '紫花苜蓿', '百喜草', '苏丹草', '高粱草', '甜象草']
+        growth_status = ['幼苗', '成长期', '成熟期']
+        area_ids = ['AREA-FOR-001', 'AREA-FOR-002', 'AREA-GRA-001']
+        resources = []
+        for i in range(1, 21):
+            if i % 2 == 0:
+                # 树木资源
+                species = random.choice(species_tree)
+                area_id = random.choice(area_ids[:2])
+                quantity = random.randint(50, 300)
+                res = Resource(
+                    ResourceID=f'RES-TREE-{i:03d}',
+                    ResourceType='树木',
+                    AreaID=area_id,
+                    SpeciesName=species,
+                    Quantity=quantity,
+                    Area=None,
+                    GrowthStatus=random.choice(growth_status),
+                    PlantTime=datetime(2024, random.randint(1, 12), random.randint(1, 28)),
+                    UpdateTime=datetime.now()
+                )
+            else:
+                # 草地资源
+                species = random.choice(species_grass)
+                area_id = 'AREA-GRA-001'
+                area_size = round(random.uniform(1000, 5000), 2)
+                res = Resource(
+                    ResourceID=f'RES-GRASS-{i:03d}',
+                    ResourceType='草地',
+                    AreaID=area_id,
+                    SpeciesName=species,
+                    Quantity=None,
+                    Area=area_size,
+                    GrowthStatus=random.choice(growth_status),
+                    PlantTime=datetime(2024, random.randint(1, 12), random.randint(1, 28)),
+                    UpdateTime=datetime.now()
+                )
+            resources.append(res)
+        db.session.add_all(resources)
+        db.session.commit()
+        print(f"✓ 添加了 {len(resources)} 条资源信息")
+
+        # 添加资源变动记录
+        changes = [
+            ResourceChangeLog(
+                ChangeID='CHG-001',
+                ResourceID='RES-TREE-001',
+                ChangeType='新增',
+                ChangeReason='新种植',
+                ChangeTime=datetime.now(),
+                OperatorID='USR-SYS-001'
+            ),
+            ResourceChangeLog(
+                ChangeID='CHG-002',
+                ResourceID='RES-GRASS-001',
+                ChangeType='状态更新',
+                ChangeReason='进入成熟期',
+                ChangeTime=datetime.now(),
+                OperatorID='USR-DATA-001'
+            ),
+            ResourceChangeLog(
+                ChangeID='CHG-003',
+                ResourceID='RES-TREE-002',
+                ChangeType='新增',
+                ChangeReason='补种幼苗',
+                ChangeTime=datetime.now(),
+                OperatorID='USR-FLD-002'
+            )
+        ]
+        db.session.add_all(changes)
+        db.session.commit()
+        print(f"✓ 添加了 {len(changes)} 条资源变动记录")
 
         print("✅ 测试数据插入完成！")
 

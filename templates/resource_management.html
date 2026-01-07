@@ -1,0 +1,853 @@
+<!-- templates/resource_management.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资源管理 - 智慧林草</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --secondary-color: #4CAF50;
+            --light-green: #8BC34A;
+            --dark-green: #1B5E20;
+            --warning-color: #FF9800;
+            --danger-color: #F44336;
+            --info-color: #2196F3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--dark-green), var(--primary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar {
+            background: white;
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            padding-top: 20px;
+        }
+
+        .main-content {
+            padding: 20px;
+            min-height: calc(100vh - 56px);
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom: none;
+            font-weight: bold;
+            padding: 15px 20px;
+        }
+
+        .badge-tree { 
+            background: linear-gradient(135deg, #2E7D32, #4CAF50);
+            color: white;
+        }
+        .badge-grass { 
+            background: linear-gradient(135deg, #8BC34A, #CDDC39);
+            color: white;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .stat-card.total { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .stat-card.tree { background: linear-gradient(135deg, #2E7D32, #4CAF50); }
+        .stat-card.grass { background: linear-gradient(135deg, #8BC34A, #CDDC39); }
+        .stat-card.status { background: linear-gradient(135deg, #2196F3, #21CBF3); }
+
+        .table thead th {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(139, 195, 74, 0.05);
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            margin: 0 2px;
+            border-radius: 5px;
+        }
+
+        .modal-content {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding-right: 40px;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/home">
+                <i class="fas fa-tree me-2"></i>
+                智慧林草监测系统
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span id="current-time" class="text-light me-3"></span>
+                <span class="badge bg-success me-3">在线</span>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">
+                            <i class="fas fa-tachometer-alt"></i> 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-chart-bar"></i> 仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-lg-2 col-md-3 sidebar">
+                <ul class="nav flex-column">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/home">
+                            <i class="fas fa-home me-2"></i>系统首页
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/user-management">
+                            <i class="fas fa-users me-2"></i>用户管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/monitoring">
+                            <i class="fas fa-chart-line me-2"></i>环境监测
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/disaster-warning">
+                            <i class="fas fa-bell me-2"></i>灾害预警
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link active" href="/resource-management">
+                            <i class="fas fa-leaf me-2"></i>资源管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/device-management">
+                            <i class="fas fa-microchip me-2"></i>设备管理
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="/statistical-analysis">
+                            <i class="fas fa-chart-pie me-2"></i>统计分析
+                        </a>
+                    </li>
+                </ul>
+
+                <hr class="my-4">
+
+                <div class="px-3">
+                    <h6 class="text-muted mb-3">快捷操作</h6>
+                    <button class="btn btn-success btn-sm w-100 mb-2" onclick="showAddResourceModal()">
+                        <i class="fas fa-plus me-1"></i>新增资源
+                    </button>
+                    <button class="btn btn-info btn-sm w-100" onclick="loadResources()">
+                        <i class="fas fa-sync-alt me-1"></i>刷新数据
+                    </button>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-lg-10 col-md-9 main-content">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h3><i class="fas fa-leaf me-2"></i>资源管理</h3>
+                        <p class="text-muted">管理林草资源信息</p>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card total">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-leaf fa-2x"></i>
+                                </div>
+                                <div class="text-start">
+                                    <h4 class="mb-0" id="total-resources">0</h4>
+                                    <small>资源总数</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card tree">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-tree fa-2x"></i>
+                                </div>
+                                <div class="text-start">
+                                    <h4 class="mb-0" id="tree-count">0</h4>
+                                    <small>树木资源</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card grass">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-seedling fa-2x"></i>
+                                </div>
+                                <div class="text-start">
+                                    <h4 class="mb-0" id="grass-count">0</h4>
+                                    <small>草地资源</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card status">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-chart-pie fa-2x"></i>
+                                </div>
+                                <div class="text-start">
+                                    <h4 class="mb-0" id="status-stats">-</h4>
+                                    <small>生长状态统计</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>资源列表</div>
+                        <div class="d-flex">
+                            <div class="search-box me-2">
+                                <input type="text" class="form-control form-control-sm" placeholder="搜索资源..." 
+                                       id="resource-search" onkeyup="searchResources()">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <select class="form-select form-select-sm me-2" style="width: 150px;" 
+                                    id="resource-type-filter" onchange="loadResources()">
+                                <option value="">所有类型</option>
+                                <option value="树木">树木</option>
+                                <option value="草地">草地</option>
+                            </select>
+                            <select class="form-select form-select-sm me-2" style="width: 180px;" 
+                                    id="area-filter" onchange="loadResources()">
+                                <option value="">所有区域</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadResources()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="resources-list">
+                            <div class="loading">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑资源模态框 -->
+    <div class="modal fade" id="addResourceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resourceModalTitle">新增资源</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="resourceForm">
+                        <div class="mb-3">
+                            <label class="form-label">资源类型 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="resource-type" required onchange="toggleResourceFields()">
+                                <option value="">请选择类型</option>
+                                <option value="树木">树木</option>
+                                <option value="草地">草地</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">所属区域 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="area-id" required>
+                                <option value="">请选择区域</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">品种名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="species-name" required>
+                        </div>
+                        <div class="mb-3" id="quantity-div" style="display: none;">
+                            <label class="form-label">数量（树木） <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="quantity" min="1">
+                        </div>
+                        <div class="mb-3" id="area-div" style="display: none;">
+                            <label class="form-label">面积（草地，㎡） <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="area" min="0.1" step="0.1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">生长状态 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="growth-status" required>
+                                <option value="">请选择状态</option>
+                                <option value="幼苗">幼苗</option>
+                                <option value="成长期">成长期</option>
+                                <option value="成熟期">成熟期</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">种植时间 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="plant-time" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveResource()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 资源变动记录模态框 -->
+    <div class="modal fade" id="changeLogModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">资源变动记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>变动编号</th>
+                                    <th>变动类型</th>
+                                    <th>变动原因</th>
+                                    <th>变动时间</th>
+                                    <th>操作人</th>
+                                </tr>
+                            </thead>
+                            <tbody id="change-log-table">
+                                <!-- 动态内容 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // 配置
+        const API_BASE = '/api/resources';
+        const ENV_API_BASE = '/api/environment';
+        let currentResourceId = null;
+
+        // 页面加载
+        $(document).ready(function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+// 先测试API连接
+            testApiConnection();
+            loadStatistics();
+            loadResources();
+            loadAreasForSelect();
+        });
+        // 测试API连接
+        function testApiConnection() {
+            console.log('🔍 测试API连接...');
+            
+            // 测试主API
+            $.get(API_BASE + '/test', function(response) {
+                console.log('✅ 资源API连接成功:', response);
+            }).fail(function(xhr, status, error) {
+                console.error('❌ 资源API连接失败:', status, error);
+                console.log('请求URL:', API_BASE + '/test');
+            });
+            
+            // 测试环境API
+            $.get(ENV_API_BASE + '/areas', function(response) {
+                console.log('✅ 环境API连接成功:', response.code);
+            }).fail(function(xhr, status, error) {
+                console.error('❌ 环境API连接失败:', status, error);
+            });
+        }
+
+
+
+        // 更新时间显示
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 
+                now.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+        }
+
+        // 切换资源类型字段显示
+        function toggleResourceFields() {
+            const type = $('#resource-type').val();
+            if (type === '树木') {
+                $('#quantity-div').show();
+                $('#area-div').hide();
+                $('#quantity').prop('required', true);
+                $('#area').prop('required', false);
+            } else if (type === '草地') {
+                $('#quantity-div').hide();
+                $('#area-div').show();
+                $('#quantity').prop('required', false);
+                $('#area').prop('required', true);
+            } else {
+                $('#quantity-div').hide();
+                $('#area-div').hide();
+                $('#quantity').prop('required', false);
+                $('#area').prop('required', false);
+            }
+        }
+
+        // 加载统计信息
+        function loadStatistics() {
+            showLoading('#resources-list');
+            
+            $.get(`${API_BASE}/statistics`, function(response) {
+                console.log('统计数据:', response);
+                if (response.code === 200) {
+                    const data = response.data;
+                    $('#total-resources').text(data.total);
+                    $('#tree-count').text(data.tree_count);
+                    $('#grass-count').text(data.grass_count);
+                    
+                    // 格式化状态统计
+                    if (data.status_stats) {
+                        const statusText = `幼:${data.status_stats.幼苗} 成:${data.status_stats.成长期} 熟:${data.status_stats.成熟期}`;
+                        $('#status-stats').text(statusText);
+                    }
+                }
+            }).fail(function(xhr) {
+                console.error('加载统计失败:', xhr);
+                showError('#resources-list', '加载统计信息失败');
+            });
+        }
+
+        // 加载资源列表
+        function loadResources() {
+            showLoading('#resources-list');
+
+            const type = $('#resource-type-filter').val();
+            const areaId = $('#area-filter').val();
+
+            let url = API_BASE;
+            let params = [];
+
+            if (areaId) {
+                url += `?area_id=${areaId}`;
+            }
+
+            console.log('请求URL:', url);
+
+            $.get(url, function(response) {
+                console.log('资源列表响应:', response);
+                if (response.code === 200) {
+                    renderResources(response.data);
+                } else {
+                    showError('#resources-list', response.message || '加载资源列表失败');
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('请求失败:', status, error);
+                showError('#resources-list', '网络请求失败，请检查API连接');
+            });
+        }
+
+        // 渲染资源列表
+        function renderResources(resources) {
+            if (!resources || resources.length === 0) {
+                $('#resources-list').html(`
+                    <div class="empty-state">
+                        <i class="fas fa-leaf"></i>
+                        <p>暂无资源数据</p>
+                        <button class="btn btn-primary" onclick="showAddResourceModal()">
+                            <i class="fas fa-plus me-1"></i>添加第一个资源
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-hover">' +
+                       '<thead><tr><th>资源编号</th><th>类型</th><th>区域</th><th>品种</th>' +
+                       '<th>数量/面积</th><th>生长状态</th><th>种植时间</th><th>更新时间</th><th>操作</th></tr></thead><tbody>';
+
+            // 先过滤类型
+            let filteredResources = resources;
+            const typeFilter = $('#resource-type-filter').val();
+            if (typeFilter) {
+                filteredResources = resources.filter(r => r.ResourceType === typeFilter);
+            }
+
+            // 再搜索过滤
+            const searchTerm = $('#resource-search').val().toLowerCase();
+            if (searchTerm) {
+                filteredResources = filteredResources.filter(r => 
+                    (r.ResourceID && r.ResourceID.toLowerCase().includes(searchTerm)) ||
+                    (r.SpeciesName && r.SpeciesName.toLowerCase().includes(searchTerm)) ||
+                    (r.AreaID && r.AreaID.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            filteredResources.forEach(resource => {
+                const quantity = resource.ResourceType === '树木' 
+                    ? (resource.Quantity ? `${resource.Quantity}棵` : '-') 
+                    : (resource.Area ? `${resource.Area}㎡` : '-');
+                
+                const typeBadge = resource.ResourceType === '树木' ? 'badge-tree' : 'badge-grass';
+                const plantTime = formatDate(resource.PlantTime);
+                const updateTime = formatDate(resource.UpdateTime);
+
+                html += `<tr>
+                    <td><strong>${resource.ResourceID}</strong></td>
+                    <td><span class="badge ${typeBadge}">${resource.ResourceType}</span></td>
+                    <td>${resource.AreaID || '-'}</td>
+                    <td>${resource.SpeciesName}</td>
+                    <td>${quantity}</td>
+                    <td>${resource.GrowthStatus}</td>
+                    <td>${plantTime}</td>
+                    <td>${updateTime}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info btn-action" onclick="showChangeLog('${resource.ResourceID}')" title="变动记录">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning btn-action" onclick="editResource('${resource.ResourceID}')" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            $('#resources-list').html(html);
+        }
+
+        // 搜索资源
+        function searchResources() {
+            const keyword = $('#resource-search').val().toLowerCase();
+            $('table tbody tr').each(function() {
+                const text = $(this).text().toLowerCase();
+                $(this).toggle(text.includes(keyword));
+            });
+        }
+
+        // 加载区域选择列表
+        function loadAreasForSelect() {
+            $.get(`${ENV_API_BASE}/areas?per_page=100`, function(response) {
+                if (response.code === 200) {
+                    const areaSelect = $('#area-id');
+                    const areaFilter = $('#area-filter');
+                    
+                    areaSelect.empty();
+                    areaFilter.empty();
+                    
+                    areaSelect.append('<option value="">请选择区域</option>');
+                    areaFilter.append('<option value="">所有区域</option>');
+                    
+                    response.data.items.forEach(area => {
+                        const option = `<option value="${area.AreaID}">${area.AreaName} (${area.AreaID})</option>`;
+                        areaSelect.append(option);
+                        areaFilter.append(option);
+                    });
+                }
+            });
+        }
+
+        // 显示添加资源模态框
+        function showAddResourceModal() {
+            $('#resourceModalTitle').text('新增资源');
+            $('#resourceForm')[0].reset();
+            $('#addResourceModal').modal('show');
+            $('#quantityDiv').show();
+            $('#areaDiv').hide();
+            // 只绑定一次保存事件，防止多次触发
+            $('.modal-footer .btn-primary').off('click').on('click', function(){ saveResource(); });
+        }
+
+        // 保存资源
+        function saveResource() {
+            
+            const resourceType = $('#resource-type').val();
+            const areaId = $('#area-id').val();
+            const speciesName = $('#species-name').val();
+            const growthStatus = $('#growth-status').val();
+            const plantTime = $('#plant-time').val();
+
+            if (!resourceType || !areaId || !speciesName || !growthStatus || !plantTime) {
+                alert('请填写所有必填项！');
+                return;
+            }
+
+            const data = {
+                ResourceType: resourceType,
+                AreaID: areaId,
+                SpeciesName: speciesName,
+                GrowthStatus: growthStatus,
+                PlantTime: plantTime
+            };
+
+            // 根据类型设置数量或面积
+            if (resourceType === '树木') {
+                const quantity = parseInt($('#quantity').val());
+                if (!quantity || quantity <= 0) {
+                    alert('请输入有效的树木数量！');
+                    return;
+                }
+                data.Quantity = quantity;
+                data.Area = null;
+            } else {
+                const area = parseFloat($('#area').val());
+                if (!area || area <= 0) {
+                    alert('请输入有效的草地面积！');
+                    return;
+                }
+                data.Area = area;
+                data.Quantity = null;
+            }
+
+            console.log('保存数据:', data);
+
+            const url = currentResourceId ? `${API_BASE}/${currentResourceId}` : API_BASE;
+            const method = currentResourceId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                type: method,
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    console.log('保存响应:', response);
+                    if (response.code === 200 || response.code === 201) {
+                        $('#addResourceModal').modal('hide');
+                        showMessage('success', '资源保存成功！');
+                        loadResources();
+                        loadStatistics();
+                        currentResourceId = null;
+                    } else {
+                        alert('保存失败: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('保存失败:', xhr);
+                    alert('保存失败: ' + (xhr.responseJSON?.message || '服务器错误'));
+                }
+            });
+        }
+
+        // 编辑资源
+        function editResource(resourceId) {
+            currentResourceId = resourceId;
+            
+            $.get(`${API_BASE}/${resourceId}`, function(response) {
+                if (response.code === 200) {
+                    const resource = response.data;
+                    $('#resourceModalTitle').text('编辑资源');
+                    $('#resource-type').val(resource.ResourceType);
+                    $('#area-id').val(resource.AreaID);
+                    $('#species-name').val(resource.SpeciesName);
+                    $('#growth-status').val(resource.GrowthStatus);
+                    $('#plant-time').val(resource.PlantTime ? resource.PlantTime.split('T')[0] : '');
+                    
+                    if (resource.ResourceType === '树木') {
+                        $('#quantity').val(resource.Quantity);
+                    } else {
+                        $('#area').val(resource.Area);
+                    }
+                    
+                    toggleResourceFields();
+                    $('#addResourceModal').modal('show');
+                    
+                    // 设置保存按钮行为
+                    $('#addResourceModal .btn-primary').off('click').on('click', saveResource);
+                }
+            }).fail(function() {
+                alert('获取资源详情失败');
+            });
+        }
+
+        // 显示变动记录
+        function showChangeLog(resourceId) {
+            $('#change-log-table').html('<tr><td colspan="5" class="text-center">正在加载...</td></tr>');
+            $('#changeLogModal').modal('show');
+            
+            $.get(`${API_BASE}/${resourceId}/changes`, function(response) {
+                console.log('变动记录:', response);
+                if (response.code === 200) {
+                    let html = '';
+                    if (response.data && response.data.length > 0) {
+                        response.data.forEach(change => {
+                            html += `<tr>
+                                <td>${change.ChangeID}</td>
+                                <td>${change.ChangeType}</td>
+                                <td>${change.ChangeReason || '-'}</td>
+                                <td>${formatDateTime(change.ChangeTime)}</td>
+                                <td>${change.OperatorID}</td>
+                            </tr>`;
+                        });
+                    } else {
+                        html = '<tr><td colspan="5" class="text-center text-muted">暂无变动记录</td></tr>';
+                    }
+                    $('#change-log-table').html(html);
+                } else {
+                    $('#change-log-table').html('<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>');
+                }
+            }).fail(function() {
+                $('#change-log-table').html('<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>');
+            });
+        }
+
+        // ========== 工具函数 ==========
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        function showLoading(elementId) {
+            $(elementId).html('<div class="loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+        }
+
+        function showError(elementId, message) {
+            $(elementId).html(`<div class="alert alert-danger">${message}</div>`);
+        }
+
+        function showMessage(type, message) {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

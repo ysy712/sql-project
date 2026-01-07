@@ -8,6 +8,7 @@ from .base_service import BaseService
 from .user_service import UserService
 from .sensor_service import AreaService, SensorService, MonitorService
 from .auth_service import AuthService
+from .resource_service import ResourceService, ResourceChangeLogService
 
 # 为了兼容性，保留原来的名称
 EnvironmentService = MonitorService
@@ -19,5 +20,7 @@ __all__ = [
     'SensorService',
     'MonitorService',
     'EnvironmentService',
-    'AuthService'
+    'AuthService',
+    'ResourceService',
+    'ResourceChangeLogService',
 ]

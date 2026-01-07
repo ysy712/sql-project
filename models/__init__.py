@@ -7,17 +7,21 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+
 from .base_model import BaseModel
 from .sensor_model import Area, Sensor, Monitor
 from .user_model import UserModel
 from .log_model import OperationLogModel
+from .resource_model import Resource, ResourceChangeLog
 
 __all__ = [
     'db',
     'BaseModel',
     'Area',
-    'Sensor', 
+    'Sensor',
     'Monitor',
     'UserModel',
     'OperationLogModel',
+    'Resource',
+    'ResourceChangeLog',
 ]
